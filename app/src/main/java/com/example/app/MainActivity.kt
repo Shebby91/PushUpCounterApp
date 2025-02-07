@@ -32,6 +32,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +55,17 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
 
     private var previousZ = 0f
     private var pushUpInProgress = false
+    private var pushUpStartTime = 0L
+    private var lastPushUpTime = 0L
+
+    private val minPushUpDuration = 400  // Angepasst: Realistischere Zeit
+    private val minZdiff = 1.5f
+    private val minTotalMovement = 2.5f  // Angepasst: Weniger Distanz notwendig
+
+    private var zValues = mutableListOf<Float>()
+
+    private var calibratedZ = 0f  // Neue Variable: Speichert den Kalibrierungswert
+    private var isCalibrated = false  // Neue Variable: Zeigt an, ob kalibriert wurde
 
     fun register() {
         accelerometer?.let {
@@ -65,19 +77,44 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
         sensorManager.unregisterListener(this)
     }
 
+    fun calibrate() {
+        isCalibrated = false  // Vorherige Kalibrierung zurücksetzen
+    }
+
     override fun onSensorChanged(event: SensorEvent?) {
         event?.let {
-            val currentZ = it.values[2]  // Z-Achse der Beschleunigung
+            val currentZ = it.values[2]
+            val timestamp = System.currentTimeMillis()
 
-            if (previousZ - currentZ > 5) {  // Bewegung nach unten
+            if (!isCalibrated) {
+                calibratedZ = currentZ
+                isCalibrated = true
+                return
+            }
+
+            if (zValues.size > 5) zValues.removeAt(0)
+            zValues.add(currentZ)
+            val smoothedZ = zValues.average().toFloat()
+
+            val deltaZ = previousZ - smoothedZ
+
+            if (!pushUpInProgress && deltaZ > minZdiff) {
                 pushUpInProgress = true
-            }
-            if (pushUpInProgress && currentZ - previousZ > 5) {  // Bewegung nach oben
-                pushUpInProgress = false
-                onPushUpDetected()  // Counter erhöhen
+                pushUpStartTime = timestamp
             }
 
-            previousZ = currentZ
+            if (pushUpInProgress && smoothedZ - previousZ > minZdiff) {
+                val pushUpDuration = timestamp - pushUpStartTime
+                val totalMovement = abs(previousZ - smoothedZ)
+
+                if (pushUpDuration > minPushUpDuration && totalMovement > minTotalMovement) {
+                    pushUpInProgress = false
+                    lastPushUpTime = timestamp
+                    onPushUpDetected()
+                }
+            }
+
+            previousZ = smoothedZ
         }
     }
 
@@ -142,6 +179,8 @@ fun PushUpCounterScreen() {
     var editEntry by remember { mutableStateOf<Pair<String, Int>?>(null) } // Für Bearbeiten
     var deleteEntry by remember { mutableStateOf<String?>(null) } // Für Bestätigung beim Löschen
     var showGoalAchievedDialog by remember { mutableStateOf(false) } // Flag für Ziel erreicht Dialog
+    var showCalibratedDialog by remember { mutableStateOf(false) }
+
     // Fortschritt berechnen
 
     val currentDate = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
@@ -295,6 +334,21 @@ fun PushUpCounterScreen() {
         ) {
             Text(text = "Zurücksetzen", color = MaterialTheme.colorScheme.onSecondary)
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = {
+                sensorListener.calibrate()
+                showCalibratedDialog = true
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
+            Text(text = "Kalibrieren", color = MaterialTheme.colorScheme.onSecondary)
+        }
     }
 
     // Einfache AlertDialog-Box anzeigen
@@ -319,6 +373,20 @@ fun PushUpCounterScreen() {
             text = { Text("Herzlichen Glückwunsch! Du hast dein tägliches Ziel von $dailyGoal Push-Ups erreicht.",color = MaterialTheme.colorScheme.onTertiary) },
             confirmButton = {
                 Button(onClick = { showGoalAchievedDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // Dialog für das Erreichen des Ziels
+    if (showCalibratedDialog) {
+        AlertDialog(
+            onDismissRequest = { showCalibratedDialog = false },
+            title = { Text("Erfolgreich!") },
+            text = { Text("Erfolgreich kalibriert",color = MaterialTheme.colorScheme.onTertiary) },
+            confirmButton = {
+                Button(onClick = { showCalibratedDialog = false }) {
                     Text("OK")
                 }
             }
