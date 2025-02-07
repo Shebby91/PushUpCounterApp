@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -20,7 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.app.ui.theme.AppTheme
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
@@ -31,7 +31,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AppTheme {
+            DarkTheme {
                 PushUpCounterScreen()
             }
         }
@@ -39,12 +39,34 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun DarkTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = Color(0xFFFFC107),
+            secondary = Color(0xFFDC3545),
+            background = Color(0xFF212529),
+            surface = Color(0xFFF8F9FA),
+            onPrimary = Color.White,
+            onSecondary = Color.White,
+            onTertiary = Color.Black,
+            onBackground = Color(0xFFB0A8B9),
+            onSurface = Color(0xFFB0A8B9),
+            tertiary = Color(0xFF198754)
+        ),
+        typography = Typography(),
+        content = content
+    )
+}
+
+
+
+@Composable
 fun PushUpCounterScreen() {
     val context = LocalContext.current
     val sharedPreferences = context.getSharedPreferences("push_up_prefs", Context.MODE_PRIVATE)
 
     // Ziel speichern
-    var dailyGoal by remember { mutableIntStateOf(sharedPreferences.getInt("daily_goal", 50)) }
+    var dailyGoal by remember { mutableIntStateOf(sharedPreferences.getInt("daily_goal", 30)) }
     var count by remember { mutableIntStateOf(0) }
     var history by remember { mutableStateOf(loadHistory(sharedPreferences)) }
     var editEntry by remember { mutableStateOf<Pair<String, Int>?>(null) } // Für Bearbeiten
@@ -119,17 +141,17 @@ fun PushUpCounterScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp, vertical = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         // Ziel-Eingabe
         OutlinedTextField(
             value = dailyGoal.toString(),
             onValueChange = { dailyGoal = it.toIntOrNull() ?: dailyGoal },
-            label = { Text("Tägliches Ziel (Push-Ups)") },
+            label = { Text("Tägliches Ziel (Push-Ups)", color = MaterialTheme.colorScheme.primary) },
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -139,14 +161,15 @@ fun PushUpCounterScreen() {
             onClick = {
                 saveGoalToPreferences(dailyGoal)
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            Text(text = "Ziel speichern")
+            Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text(text = "Push-Up Verlauf", style = MaterialTheme.typography.titleLarge)
+        Text(text = "Push-Up Verlauf", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleLarge)
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -163,7 +186,7 @@ fun PushUpCounterScreen() {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text(text = "Push-Ups: $count", style = MaterialTheme.typography.headlineLarge)
+        Text(text = "Push-Ups: $count", color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -177,9 +200,10 @@ fun PushUpCounterScreen() {
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
         ) {
-            Text(text = "Push-Up hinzufügen")
+            Text(text = "Push-Up hinzufügen", color = MaterialTheme.colorScheme.onPrimary)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -190,9 +214,10 @@ fun PushUpCounterScreen() {
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
         ) {
-            Text(text = "Zurücksetzen")
+            Text(text = "Zurücksetzen", color = MaterialTheme.colorScheme.onSecondary)
         }
     }
 
@@ -200,8 +225,8 @@ fun PushUpCounterScreen() {
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text(text = "Speichern erfolgreich") },
-            text = { Text("Das tägliche Ziel wurde erfolgreich gespeichert.") },
+            title = { Text(text = "Speichern erfolgreich",color = MaterialTheme.colorScheme.onTertiary) },
+            text = { Text("Das tägliche Ziel wurde erfolgreich gespeichert.",color = MaterialTheme.colorScheme.onTertiary) },
             confirmButton = {
                 Button(onClick = { showDialog = false }) {
                     Text("OK")
@@ -215,7 +240,7 @@ fun PushUpCounterScreen() {
         AlertDialog(
             onDismissRequest = { showGoalAchievedDialog = false },
             title = { Text("Ziel erreicht!") },
-            text = { Text("Herzlichen Glückwunsch! Du hast dein tägliches Ziel von $dailyGoal Push-Ups erreicht.") },
+            text = { Text("Herzlichen Glückwunsch! Du hast dein tägliches Ziel von $dailyGoal Push-Ups erreicht.",color = MaterialTheme.colorScheme.onTertiary) },
             confirmButton = {
                 Button(onClick = { showGoalAchievedDialog = false }) {
                     Text("OK")
@@ -298,7 +323,7 @@ fun ListItem(date: String, amount: Int, progress: Float, isSuccess: Boolean, onE
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = if (isSuccess) Color.Green else Color.Gray,
+                color = if (isSuccess) MaterialTheme.colorScheme.tertiary else Color.Gray,
             )
         }
         // Zweite ProgressBar für den Überschuss
@@ -315,7 +340,7 @@ fun ListItem(date: String, amount: Int, progress: Float, isSuccess: Boolean, onE
                     LinearProgressIndicator(
                         progress = { progressOverGoal },
                         modifier = Modifier.fillMaxWidth().height(6.dp),
-                        color = if (isSuccess) Color.Green else Color.Gray,
+                        color = if (isSuccess) MaterialTheme.colorScheme.tertiary else Color.Gray,
                     )
                 }
             }
@@ -329,10 +354,10 @@ fun EditDialog(date: String, oldValue: Int, onSave: (Int) -> Unit) {
 
     AlertDialog(
         onDismissRequest = { onSave(oldValue) },
-        title = { Text("Push-Ups bearbeiten") },
+        title = { Text("Push-Ups bearbeiten",color = MaterialTheme.colorScheme.onTertiary) },
         text = {
             Column {
-                Text("Neuer Wert für $date:")
+                Text("Neuer Wert für $date:" ,color = MaterialTheme.colorScheme.onTertiary)
                 OutlinedTextField(
                     value = newCount,
                     onValueChange = { newCount = it.filter { char -> char.isDigit() } },
@@ -359,8 +384,8 @@ fun EditDialog(date: String, oldValue: Int, onSave: (Int) -> Unit) {
 fun DeleteConfirmationDialog(date: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Eintrag löschen") },
-        text = { Text("Möchtest du den Eintrag für $date wirklich löschen?") },
+        title = { Text("Eintrag löschen",color = MaterialTheme.colorScheme.onTertiary) },
+        text = { Text("Möchtest du den Eintrag für $date wirklich löschen?",color = MaterialTheme.colorScheme.onTertiary) },
         confirmButton = {
             Button(onClick = onConfirm) {
                 Text("Löschen")
