@@ -1,6 +1,10 @@
 package com.example.app
 
 import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,6 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.*
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
@@ -32,10 +39,49 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             DarkTheme {
-                PushUpCounterScreen()
+                AppNavigation()
+                //PushUpCounterScreen()
             }
         }
     }
+}
+
+class PushUpSensorListener(context: Context, private val onPushUpDetected: () -> Unit) :
+    SensorEventListener {
+
+    private var sensorManager: SensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private var accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
+    private var previousZ = 0f
+    private var pushUpInProgress = false
+
+    fun register() {
+        accelerometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+        }
+    }
+
+    fun unregister() {
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        event?.let {
+            val currentZ = it.values[2]  // Z-Achse der Beschleunigung
+
+            if (previousZ - currentZ > 5) {  // Bewegung nach unten
+                pushUpInProgress = true
+            }
+            if (pushUpInProgress && currentZ - previousZ > 5) {  // Bewegung nach oben
+                pushUpInProgress = false
+                onPushUpDetected()  // Counter erhöhen
+            }
+
+            previousZ = currentZ
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 }
 
 @Composable
@@ -58,13 +104,37 @@ fun DarkTheme(content: @Composable () -> Unit) {
     )
 }
 
+@Composable
+fun AppNavigation() {
+    val navController = rememberNavController()
 
+    NavHost(navController, startDestination = "start") {
+        composable("start") { StartScreen(navController) }
+        composable("pushup_counter") { PushUpCounterScreen() }
+    }
+}
+
+@Composable
+fun StartScreen(navController: NavController) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Button(
+            onClick = { navController.navigate("pushup_counter") },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text("Zum Push-Up Counter", color = MaterialTheme.colorScheme.onPrimary)
+        }
+    }
+}
 
 @Composable
 fun PushUpCounterScreen() {
     val context = LocalContext.current
     val sharedPreferences = context.getSharedPreferences("push_up_prefs", Context.MODE_PRIVATE)
-
     // Ziel speichern
     var dailyGoal by remember { mutableIntStateOf(sharedPreferences.getInt("daily_goal", 30)) }
     var count by remember { mutableIntStateOf(0) }
@@ -132,11 +202,17 @@ fun PushUpCounterScreen() {
         saveHistoryToPreferences()
     }
 
-    // Bei der ersten Initialisierung die Test-Daten hinzufügen
+    val sensorListener = remember { PushUpSensorListener(context) { count++; addPushUpRecord() } }
+
     LaunchedEffect(Unit) {
-        addTestEntries()
+        // Bei der ersten Initialisierung die Test-Daten hinzufügen
+        //addTestEntries()
+        sensorListener.register()
     }
 
+    DisposableEffect(Unit) {
+        onDispose { sensorListener.unregister() }
+    }
 
     Column(
         modifier = Modifier
