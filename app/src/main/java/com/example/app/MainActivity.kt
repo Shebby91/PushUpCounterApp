@@ -365,7 +365,7 @@ fun PlankScreen(viewModel: PlankViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("History:",color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
+        Text("Plank Verlauf:",color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -412,7 +412,7 @@ fun PlankScreen(viewModel: PlankViewModel) {
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
         ) {
-            Text(text = "Start Plank", color = MaterialTheme.colorScheme.onPrimary)
+            Text(text = "Plank starten", color = MaterialTheme.colorScheme.onPrimary)
         }
         Spacer(modifier = Modifier.height(24.dp))
         // Button zum Stoppen des Timers
