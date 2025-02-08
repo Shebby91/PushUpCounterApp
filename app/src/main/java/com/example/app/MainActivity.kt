@@ -179,7 +179,8 @@ class PlankViewModel(context: Context) : ViewModel() {
 
             override fun onFinish() {
                 isRunning = false
-                val record = "Plank: ${minutes}m ${seconds}s on ${Date()}"
+                val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
+                val record = "${date}\n${minutes}m ${seconds}s Plank"
                 history = history + record
                 saveHistoryToPreferences()
             }
@@ -191,6 +192,7 @@ class PlankViewModel(context: Context) : ViewModel() {
         isRunning = false
     }
 
+    @SuppressLint("DefaultLocale")
     private fun formatTime(timeInMillis: Int): String {
         val minutes = timeInMillis / 1000 / 60
         val seconds = (timeInMillis / 1000) % 60
@@ -287,7 +289,7 @@ fun StartScreen(navController: NavController) {
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("Push-Up-Counter", color = MaterialTheme.colorScheme.onPrimary)
+                    Text("Push-Ups", color = MaterialTheme.colorScheme.onPrimary)
                 }
 
                 Button(
@@ -326,7 +328,13 @@ fun StartScreen(navController: NavController) {
 
 @Composable
 fun PlankScreen(viewModel: PlankViewModel) {
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Row {
             TextField(
                 value = viewModel.minutes.toString(),
@@ -342,41 +350,83 @@ fun PlankScreen(viewModel: PlankViewModel) {
                 modifier = Modifier.weight(1f)
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Anzeige der verbleibenden Zeit
-        Text(text = "Remaining Time: ${viewModel.remainingTimeText}", style = MaterialTheme.typography.bodyLarge)
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Button zum Starten des Timers
-        Button(onClick = { viewModel.startTimer() }, enabled = !viewModel.isRunning) {
-            Text("Start Plank")
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Button zum Stoppen des Timers
-        Button(onClick = { viewModel.stopTimer() }, enabled = viewModel.isRunning) {
-            Text("Stop")
+        Button(
+            onClick = {
+                viewModel.saveTargetTime()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Button zum Speichern der Zielzeit
-        Button(onClick = { viewModel.saveTargetTime() }) {
-            Text("Save Target Time")
-        }
+        Text("History:",color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Anzeige der Historie
-        Text("History:")
-        LazyColumn {
             items(viewModel.history) { item ->
-                Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    Text(item, modifier = Modifier.padding(8.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    elevation = CardDefaults.cardElevation(4.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EAF6)) // Hellgraue Farbe
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp, 16.dp,16.dp,4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f) // Datum & Anzahl links
+                        ) {
+                            Text(item, modifier = Modifier.padding(8.dp))
+                        }
+                    }
                 }
             }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Anzeige der verbleibenden Zeit
+        Text(text = viewModel.remainingTimeText, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineLarge)
+        Spacer(modifier = Modifier.height(24.dp))
+        // Button zum Starten des Timers
+        Button(
+            onClick = {
+                viewModel.startTimer()
+            },
+            enabled = !viewModel.isRunning,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+        ) {
+            Text(text = "Start Plank", color = MaterialTheme.colorScheme.onPrimary)
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        // Button zum Stoppen des Timers
+        Button(
+            onClick = {
+                viewModel.stopTimer()
+            },
+            enabled = viewModel.isRunning,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
+            Text(text = "Stop", color = MaterialTheme.colorScheme.onSecondary)
         }
     }
 }
@@ -536,7 +586,7 @@ fun PushUpCounterScreen() {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedButton(
+        Button(
             onClick = {
                 count = 0
                 vibratePhone(context,100)
