@@ -5,6 +5,9 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -33,6 +36,7 @@ import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
+import com.example.app.vibratePhone
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +70,9 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
 
     private var calibratedZ = 0f  // Neue Variable: Speichert den Kalibrierungswert
     private var isCalibrated = false  // Neue Variable: Zeigt an, ob kalibriert wurde
+
+    // Vibrator für Vibrationseffekt
+    private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
     fun register() {
         accelerometer?.let {
@@ -111,6 +118,7 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
                     pushUpInProgress = false
                     lastPushUpTime = timestamp
                     onPushUpDetected()
+                    vibratePhone()
                 }
             }
 
@@ -119,6 +127,14 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+
+    private fun vibratePhone() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Neue Vibrations-API für Android 8+ (Oreo)
+            vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+    }
+
 }
 
 @Composable
@@ -326,6 +342,7 @@ fun PushUpCounterScreen() {
         OutlinedButton(
             onClick = {
                 count = 0
+                vibratePhone(context,100)
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -345,7 +362,7 @@ fun PushUpCounterScreen() {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            //colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
         ) {
             Text(text = "Kalibrieren", color = MaterialTheme.colorScheme.onSecondary)
         }
@@ -353,6 +370,7 @@ fun PushUpCounterScreen() {
 
     // Einfache AlertDialog-Box anzeigen
     if (showDialog) {
+        vibratePhone(context,100)
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text(text = "Speichern erfolgreich",color = MaterialTheme.colorScheme.onTertiary) },
@@ -367,6 +385,7 @@ fun PushUpCounterScreen() {
 
     // Dialog für das Erreichen des Ziels
     if (showGoalAchievedDialog) {
+        vibratePhone(context,400)
         AlertDialog(
             onDismissRequest = { showGoalAchievedDialog = false },
             title = { Text("Ziel erreicht!") },
@@ -381,6 +400,7 @@ fun PushUpCounterScreen() {
 
     // Dialog für das Erreichen des Ziels
     if (showCalibratedDialog) {
+        vibratePhone(context,100)
         AlertDialog(
             onDismissRequest = { showCalibratedDialog = false },
             title = { Text("Erfolgreich!") },
