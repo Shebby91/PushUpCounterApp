@@ -1,5 +1,6 @@
 package com.example.app
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -26,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -36,7 +38,11 @@ import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
-import com.example.app.vibratePhone
+import androidx.compose.foundation.Image
+import android.os.CountDownTimer
+import android.widget.Toast
+import androidx.lifecycle.ViewModel
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -137,6 +143,88 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
 
 }
 
+@SuppressLint("StaticFieldLeak")
+class PlankViewModel(context: Context) : ViewModel() {
+    var minutes by mutableIntStateOf(0)
+    var seconds by mutableIntStateOf(30) // Standardzeit 30 Sekunden
+    var remainingTime by mutableIntStateOf(0)
+    var isRunning by mutableStateOf(false)
+    var history by mutableStateOf(listOf<String>())
+    var progress by mutableFloatStateOf(0f)
+    var remainingTimeText by mutableStateOf("")  // Neuer Observable-Status für die verbleibende Zeit
+    private var timer: CountDownTimer? = null
+
+    private val sharedPreferences = context.getSharedPreferences("plank_prefs", Context.MODE_PRIVATE)
+
+    init {
+        loadHistory()
+        loadTargetTime() // Laden der gespeicherten Zielzeit
+    }
+
+    fun startTimer() {
+        if (isRunning) return
+        val totalMillis = (minutes * 60 + seconds) * 1000L
+        remainingTime = totalMillis.toInt()
+        isRunning = true
+        progress = 0f
+        remainingTimeText = formatTime(remainingTime)
+
+        // Timer starten
+        timer = object : CountDownTimer(totalMillis, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                remainingTime = millisUntilFinished.toInt()
+                remainingTimeText = formatTime(remainingTime) // Update der verbleibenden Zeit
+                progress = (1 - millisUntilFinished.toFloat() / totalMillis)
+            }
+
+            override fun onFinish() {
+                isRunning = false
+                val record = "Plank: ${minutes}m ${seconds}s on ${Date()}"
+                history = history + record
+                saveHistoryToPreferences()
+            }
+        }.start()
+    }
+
+    fun stopTimer() {
+        timer?.cancel()
+        isRunning = false
+    }
+
+    private fun formatTime(timeInMillis: Int): String {
+        val minutes = timeInMillis / 1000 / 60
+        val seconds = (timeInMillis / 1000) % 60
+        return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    // Methode zum Speichern der Historie
+    private fun saveHistoryToPreferences() {
+        val gson = Gson()
+        val json = gson.toJson(history)
+        sharedPreferences.edit().putString("plank_history", json).apply()
+    }
+
+    // Methode zum Laden der Historie
+    private fun loadHistory() {
+        val gson = Gson()
+        val json = sharedPreferences.getString("plank_history", null)
+        val type = object : TypeToken<List<String>>() {}.type
+        history = gson.fromJson(json, type) ?: emptyList()
+    }
+
+    // Methode zum Speichern der Zielzeit
+    fun saveTargetTime() {
+        sharedPreferences.edit().putInt("target_minutes", minutes).apply()
+        sharedPreferences.edit().putInt("target_seconds", seconds).apply()
+    }
+
+    // Methode zum Laden der Zielzeit
+    private fun loadTargetTime() {
+        minutes = sharedPreferences.getInt("target_minutes", 0)
+        seconds = sharedPreferences.getInt("target_seconds", 30)
+    }
+}
+
 @Composable
 fun DarkTheme(content: @Composable () -> Unit) {
     MaterialTheme(
@@ -160,10 +248,11 @@ fun DarkTheme(content: @Composable () -> Unit) {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-
+    val context = LocalContext.current
     NavHost(navController, startDestination = "start") {
         composable("start") { StartScreen(navController) }
         composable("pushup_counter") { PushUpCounterScreen() }
+        composable("plank") { PlankScreen(PlankViewModel(context)) }
     }
 }
 
@@ -172,14 +261,122 @@ fun StartScreen(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 32.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
-        Button(
-            onClick = { navController.navigate("pushup_counter") },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Zum Push-Up Counter", color = MaterialTheme.colorScheme.onPrimary)
+            // App-Logo
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "App Logo",
+                modifier = Modifier.size(250.dp)
+            )
+            Text(text = "Power-App", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            // Erste Reihe mit zwei Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { navController.navigate("pushup_counter") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Push-Up-Counter", color = MaterialTheme.colorScheme.onPrimary)
+                }
+
+                Button(
+                    onClick = { navController.navigate("plank") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Planks", color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+
+            // Zweite Reihe mit zwei Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { /* TODO */ },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("3", color = MaterialTheme.colorScheme.onPrimary)
+                }
+                Button(
+                    onClick = { /* TODO */ },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("4", color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PlankScreen(viewModel: PlankViewModel) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row {
+            TextField(
+                value = viewModel.minutes.toString(),
+                onValueChange = { viewModel.minutes = it.toIntOrNull() ?: 0 },
+                label = { Text("Minutes") },
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            TextField(
+                value = viewModel.seconds.toString(),
+                onValueChange = { viewModel.seconds = it.toIntOrNull() ?: 30 },
+                label = { Text("Seconds") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Anzeige der verbleibenden Zeit
+        Text(text = "Remaining Time: ${viewModel.remainingTimeText}", style = MaterialTheme.typography.bodyLarge)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Button zum Starten des Timers
+        Button(onClick = { viewModel.startTimer() }, enabled = !viewModel.isRunning) {
+            Text("Start Plank")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Button zum Stoppen des Timers
+        Button(onClick = { viewModel.stopTimer() }, enabled = viewModel.isRunning) {
+            Text("Stop")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Button zum Speichern der Zielzeit
+        Button(onClick = { viewModel.saveTargetTime() }) {
+            Text("Save Target Time")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Anzeige der Historie
+        Text("History:")
+        LazyColumn {
+            items(viewModel.history) { item ->
+                Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+                    Text(item, modifier = Modifier.padding(8.dp))
+                }
+            }
         }
     }
 }
@@ -247,7 +444,7 @@ fun PushUpCounterScreen() {
     }
 
     // Testweise 10 Datumseinträge hinzufügen
-    fun addTestEntries() {
+    /*fun addTestEntries() {
         val testHistory = mutableMapOf<String, Int>()
         for (i in 1..6) {
             val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date().apply { time = time - (i * 86400000L) }) // Tägliche Rückdaten
@@ -256,7 +453,7 @@ fun PushUpCounterScreen() {
         history = testHistory
         saveHistoryToPreferences()
     }
-
+    */
     val sensorListener = remember { PushUpSensorListener(context) { count++; addPushUpRecord() } }
 
     LaunchedEffect(Unit) {
