@@ -144,12 +144,12 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
 }
 
 @SuppressLint("StaticFieldLeak")
-class PlankViewModel(context: Context) : ViewModel() {
+class PlankViewModel(private val context: Context) : ViewModel() {
     var minutes by mutableIntStateOf(0)
     var seconds by mutableIntStateOf(30) // Standardzeit 30 Sekunden
     var remainingTime by mutableIntStateOf(0)
     var isRunning by mutableStateOf(false)
-    var history by mutableStateOf(listOf<String>())
+    var history by mutableStateOf<List<WorkoutRecord>>(WorkoutHistoryRepository.loadHistory(context))
     var progress by mutableFloatStateOf(0f)
     var remainingTimeText by mutableStateOf("")  // Neuer Observable-Status für die verbleibende Zeit
     private var timer: CountDownTimer? = null
@@ -157,7 +157,7 @@ class PlankViewModel(context: Context) : ViewModel() {
     private val sharedPreferences = context.getSharedPreferences("plank_prefs", Context.MODE_PRIVATE)
 
     init {
-        loadHistory()
+        //loadHistory()
         loadTargetTime() // Laden der gespeicherten Zielzeit
     }
 
@@ -180,9 +180,17 @@ class PlankViewModel(context: Context) : ViewModel() {
             override fun onFinish() {
                 isRunning = false
                 val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-                val record = "${date}\n${minutes}m ${seconds}s Plank"
+                /*val record = "${date}\n${minutes}m ${seconds}s Plank"
                 history = history + record
-                saveHistoryToPreferences()
+                saveHistoryToPreferences()*/
+
+                //Dauer in Millisekunden berechnen
+                val totalMilliseconds = (minutes * 60 + seconds) * 1000
+                val record = WorkoutRecord(date = date, type = WorkoutType.PLANK, durationMillis = totalMilliseconds)
+                val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+                currentHistory.add(record)
+                WorkoutHistoryRepository.saveHistory(context, currentHistory)
+                history = currentHistory
             }
         }.start()
     }
@@ -200,19 +208,19 @@ class PlankViewModel(context: Context) : ViewModel() {
     }
 
     // Methode zum Speichern der Historie
-    private fun saveHistoryToPreferences() {
+    /*private fun saveHistoryToPreferences() {
         val gson = Gson()
         val json = gson.toJson(history)
         sharedPreferences.edit().putString("plank_history", json).apply()
-    }
+    }*/
 
     // Methode zum Laden der Historie
-    private fun loadHistory() {
+   /* private fun loadHistory() {
         val gson = Gson()
         val json = sharedPreferences.getString("plank_history", null)
         val type = object : TypeToken<List<String>>() {}.type
         history = gson.fromJson(json, type) ?: emptyList()
-    }
+    }*/
 
     // Methode zum Speichern der Zielzeit
     fun saveTargetTime() {
@@ -225,7 +233,10 @@ class PlankViewModel(context: Context) : ViewModel() {
         minutes = sharedPreferences.getInt("target_minutes", 0)
         seconds = sharedPreferences.getInt("target_seconds", 30)
     }
+
 }
+
+
 
 @Composable
 fun DarkTheme(content: @Composable () -> Unit) {
@@ -328,6 +339,8 @@ fun StartScreen(navController: NavController) {
 
 @Composable
 fun PlankScreen(viewModel: PlankViewModel) {
+    var showDialog by remember { mutableStateOf(false) }
+    val filteredHistory = viewModel.history.filter { it.type == WorkoutType.PLANK}
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -356,6 +369,7 @@ fun PlankScreen(viewModel: PlankViewModel) {
         Button(
             onClick = {
                 viewModel.saveTargetTime()
+                showDialog = true
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -366,6 +380,7 @@ fun PlankScreen(viewModel: PlankViewModel) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text("Plank Verlauf:",color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
+
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -373,27 +388,12 @@ fun PlankScreen(viewModel: PlankViewModel) {
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
 
-            items(viewModel.history) { item ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    elevation = CardDefaults.cardElevation(4.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EAF6)) // Hellgraue Farbe
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp, 16.dp,16.dp,4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f) // Datum & Anzahl links
-                        ) {
-                            Text(item, modifier = Modifier.padding(8.dp))
-                        }
-                    }
-                }
+            items(filteredHistory) { record ->
+                WorkoutHistoryItem(
+                    record = record,
+                    onEdit = { /* Bearbeitungslogik */ },
+                    onDelete = { /* Lösch-Logik */ }
+                )
             }
         }
         Spacer(modifier = Modifier.height(24.dp))
@@ -429,6 +429,10 @@ fun PlankScreen(viewModel: PlankViewModel) {
             Text(text = "Stop", color = MaterialTheme.colorScheme.onSecondary)
         }
     }
+
+    if (showDialog){
+        WorkoutAlert(title = "Speichern erfolgreich", message = "Das tägliche Ziel wurde erfolgreich gespeichert", onDismiss = { showDialog = false})
+    }
 }
 
 @Composable
@@ -438,7 +442,7 @@ fun PushUpCounterScreen() {
     // Ziel speichern
     var dailyGoal by remember { mutableIntStateOf(sharedPreferences.getInt("daily_goal", 30)) }
     var count by remember { mutableIntStateOf(0) }
-    var history by remember { mutableStateOf(loadHistory(sharedPreferences)) }
+    var history by remember { mutableStateOf(WorkoutHistoryRepository.loadHistory(context)) }
     var editEntry by remember { mutableStateOf<Pair<String, Int>?>(null) } // Für Bearbeiten
     var deleteEntry by remember { mutableStateOf<String?>(null) } // Für Bestätigung beim Löschen
     var showGoalAchievedDialog by remember { mutableStateOf(false) } // Flag für Ziel erreicht Dialog
@@ -447,8 +451,8 @@ fun PushUpCounterScreen() {
     // Fortschritt berechnen
 
     val currentDate = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-    val currentDayCount = history[currentDate] ?: 0
-    val goalReachedToday = currentDayCount == dailyGoal - 1 // Überprüfen, ob Ziel erreicht wurde
+    //val currentDayCount = history[currentDate] ?: 0
+    //val goalReachedToday = currentDayCount == dailyGoal - 1 // Überprüfen, ob Ziel erreicht wurde
 
     // Dialog-Status
     var showDialog by remember { mutableStateOf(false) }
@@ -468,16 +472,29 @@ fun PushUpCounterScreen() {
 
     fun addPushUpRecord() {
         val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-        history = history.toMutableMap().apply {
-            put(date, (this[date] ?: 0) + 1)
+        // Hole ggf. bereits vorhandene Daten für den Tag
+        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+
+        // Prüfen, ob für heute bereits ein Push‑Up-Record existiert:
+        val existingRecord = currentHistory.find { it.date == date && it.type == WorkoutType.PUSH_UP }
+        if (existingRecord != null) {
+            // Erhöhe die Anzahl
+            val updatedRecord = existingRecord.copy(count = (existingRecord.count ?: 0) + 1)
+            currentHistory.remove(existingRecord)
+            currentHistory.add(updatedRecord)
+        } else {
+            // Erstelle einen neuen Record
+            val newRecord = WorkoutRecord(date = date, type = WorkoutType.PUSH_UP, count = 1)
+            currentHistory.add(newRecord)
         }
-        saveHistoryToPreferences()
+        WorkoutHistoryRepository.saveHistory(context, currentHistory)
+        history = currentHistory
     }
 
     fun confirmDeleteEntry(date: String) {
         deleteEntry = date // Setzt das zu löschende Datum
     }
-
+    /*
     fun performDeleteEntry(date: String) {
         history = history.toMutableMap().apply {
             remove(date)
@@ -491,30 +508,19 @@ fun PushUpCounterScreen() {
             if (newCount > 0) put(date, newCount) else remove(date)
         }
         saveHistoryToPreferences()
-    }
+    }*/
 
-    // Testweise 10 Datumseinträge hinzufügen
-    /*fun addTestEntries() {
-        val testHistory = mutableMapOf<String, Int>()
-        for (i in 1..6) {
-            val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date().apply { time = time - (i * 86400000L) }) // Tägliche Rückdaten
-            testHistory[date] = (1..dailyGoal).random() // Zufällige Anzahl von Push-Ups für jedes Datum
-        }
-        history = testHistory
-        saveHistoryToPreferences()
-    }
-    */
     val sensorListener = remember { PushUpSensorListener(context) { count++; addPushUpRecord() } }
 
     LaunchedEffect(Unit) {
-        // Bei der ersten Initialisierung die Test-Daten hinzufügen
-        //addTestEntries()
         sensorListener.register()
     }
 
     DisposableEffect(Unit) {
         onDispose { sensorListener.unregister() }
     }
+
+    val filteredHistory = history.filter { it.type == WorkoutType.PUSH_UP }
 
     Column(
         modifier = Modifier
@@ -554,11 +560,19 @@ fun PushUpCounterScreen() {
                 .fillMaxWidth(),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            items(history.toList().sortedByDescending { it.first }) { (date, amount) ->
+            /*items(history.toList().sortedByDescending { it.first }) { (date, amount) ->
                 val isGoalMet = amount >= dailyGoal
                 val progress = (amount.toFloat() / dailyGoal)
                 // Kachel für jedes Datum
                 ListItem(date, amount, progress, isGoalMet,{ editEntry = date to amount }, { confirmDeleteEntry(date) }, dailyGoal)
+            }*/
+
+            items(filteredHistory) { record ->
+                WorkoutHistoryItem(
+                    record = record,
+                    onEdit = { /* Bearbeitungslogik */ },
+                    onDelete = { /* Lösch-Logik */ }
+                )
             }
         }
 
@@ -572,9 +586,9 @@ fun PushUpCounterScreen() {
             onClick = {
                 count++
                 addPushUpRecord()
-                if (goalReachedToday) {
+                /*if (goalReachedToday) {
                     showGoalAchievedDialog = true // Ziel erreicht, Dialog anzeigen
-                }
+                }*/
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -609,7 +623,6 @@ fun PushUpCounterScreen() {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            //colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
         ) {
             Text(text = "Kalibrieren", color = MaterialTheme.colorScheme.onSecondary)
         }
@@ -618,64 +631,37 @@ fun PushUpCounterScreen() {
     // Einfache AlertDialog-Box anzeigen
     if (showDialog) {
         vibratePhone(context,100)
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text(text = "Speichern erfolgreich",color = MaterialTheme.colorScheme.onTertiary) },
-            text = { Text("Das tägliche Ziel wurde erfolgreich gespeichert.",color = MaterialTheme.colorScheme.onTertiary) },
-            confirmButton = {
-                Button(onClick = { showDialog = false }) {
-                    Text("OK")
-                }
-            }
-        )
+        WorkoutAlert(title = "Speichern erfolgreich", message = "Das tägliche Ziel wurde erfolgreich gespeichert", onDismiss = { showDialog = false })
     }
 
     // Dialog für das Erreichen des Ziels
     if (showGoalAchievedDialog) {
         vibratePhone(context,400)
-        AlertDialog(
-            onDismissRequest = { showGoalAchievedDialog = false },
-            title = { Text("Ziel erreicht!") },
-            text = { Text("Herzlichen Glückwunsch! Du hast dein tägliches Ziel von $dailyGoal Push-Ups erreicht.",color = MaterialTheme.colorScheme.onTertiary) },
-            confirmButton = {
-                Button(onClick = { showGoalAchievedDialog = false }) {
-                    Text("OK")
-                }
-            }
-        )
+        WorkoutAlert(title = "Ziel erreicht!", message = "Herzlichen Glückwunsch! Du hast dein tägliches Ziel von $dailyGoal Push-Ups erreicht.", onDismiss = { showGoalAchievedDialog = false })
     }
 
     // Dialog für das Erreichen des Ziels
     if (showCalibratedDialog) {
         vibratePhone(context,100)
-        AlertDialog(
-            onDismissRequest = { showCalibratedDialog = false },
-            title = { Text("Erfolgreich!") },
-            text = { Text("Erfolgreich kalibriert",color = MaterialTheme.colorScheme.onTertiary) },
-            confirmButton = {
-                Button(onClick = { showCalibratedDialog = false }) {
-                    Text("OK")
-                }
-            }
-        )
+        WorkoutAlert(title = "Erfolgreich kalibriert!", message = "Kalibrierung wurde erfolgreich zurückgesetzt.", onDismiss = { showCalibratedDialog = false })
     }
 
     // Bearbeitungsdialog anzeigen
-    editEntry?.let { (date, oldValue) ->
+    /*editEntry?.let { (date, oldValue) ->
         EditDialog(date, oldValue) { newCount ->
             updateEntry(date, newCount)
             editEntry = null
         }
     }
-
+    */
     // Bestätigungsdialog für Löschen anzeigen
-    deleteEntry?.let { date ->
+    /*deleteEntry?.let { date ->
         DeleteConfirmationDialog(
             date = date,
             onConfirm = { performDeleteEntry(date) },
             onDismiss = { deleteEntry = null }
         )
-    }
+    }*/
 }
 
 @Composable
@@ -757,57 +743,6 @@ fun ListItem(date: String, amount: Int, progress: Float, isSuccess: Boolean, onE
             }
         }
     }
-}
-
-@Composable
-fun EditDialog(date: String, oldValue: Int, onSave: (Int) -> Unit) {
-    var newCount by remember { mutableStateOf(oldValue.toString()) }
-
-    AlertDialog(
-        onDismissRequest = { onSave(oldValue) },
-        title = { Text("Push-Ups bearbeiten",color = MaterialTheme.colorScheme.onTertiary) },
-        text = {
-            Column {
-                Text("Neuer Wert für $date:" ,color = MaterialTheme.colorScheme.onTertiary)
-                OutlinedTextField(
-                    value = newCount,
-                    onValueChange = { newCount = it.filter { char -> char.isDigit() } },
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = {
-                onSave(newCount.toIntOrNull() ?: oldValue)
-            }) {
-                Text("Speichern")
-            }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = { onSave(oldValue) }) {
-                Text("Abbrechen")
-            }
-        }
-    )
-}
-
-@Composable
-fun DeleteConfirmationDialog(date: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Eintrag löschen",color = MaterialTheme.colorScheme.onTertiary) },
-        text = { Text("Möchtest du den Eintrag für $date wirklich löschen?",color = MaterialTheme.colorScheme.onTertiary) },
-        confirmButton = {
-            Button(onClick = onConfirm) {
-                Text("Löschen")
-            }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("Abbrechen")
-            }
-        }
-    )
 }
 
 fun loadHistory(sharedPreferences: android.content.SharedPreferences): Map<String, Int> {
