@@ -18,9 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.background
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,16 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.*
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
 import androidx.compose.foundation.Image
 import android.os.CountDownTimer
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -147,6 +140,7 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
 class PlankViewModel(private val context: Context) : ViewModel() {
     var minutes by mutableIntStateOf(0)
     var seconds by mutableIntStateOf(30) // Standardzeit 30 Sekunden
+    var goalSets by mutableIntStateOf(3)
     var remainingTime by mutableIntStateOf(0)
     var isRunning by mutableStateOf(false)
     var history by mutableStateOf<List<WorkoutRecord>>(WorkoutHistoryRepository.loadHistory(context))
@@ -157,7 +151,6 @@ class PlankViewModel(private val context: Context) : ViewModel() {
     private val sharedPreferences = context.getSharedPreferences("plank_prefs", Context.MODE_PRIVATE)
 
     init {
-        //loadHistory()
         loadTargetTime() // Laden der gespeicherten Zielzeit
     }
 
@@ -180,17 +173,23 @@ class PlankViewModel(private val context: Context) : ViewModel() {
             override fun onFinish() {
                 isRunning = false
                 val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-                /*val record = "${date}\n${minutes}m ${seconds}s Plank"
-                history = history + record
-                saveHistoryToPreferences()*/
 
-                //Dauer in Millisekunden berechnen
+                // Dauer in Millisekunden berechnen
                 val totalMilliseconds = (minutes * 60 + seconds) * 1000
-                val record = WorkoutRecord(date = date, type = WorkoutType.PLANK, durationMillis = totalMilliseconds)
-                val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
-                currentHistory.add(record)
-                WorkoutHistoryRepository.saveHistory(context, currentHistory)
-                history = currentHistory
+
+                // Erstelle oder aktualisiere das WorkoutRecord
+                val record = WorkoutRecord(
+                    date = date,
+                    type = WorkoutType.PLANK,
+                    durationMillis = totalMilliseconds,
+                    sets = 1 // initial 1 set
+                )
+
+                // Versuche, den bestehenden Eintrag zu finden und zu aktualisieren
+                WorkoutHistoryRepository.addOrUpdateRecord(context, record)
+
+                // Lade die aktualisierte Historie
+                history = WorkoutHistoryRepository.loadHistory(context)
             }
         }.start()
     }
@@ -207,31 +206,34 @@ class PlankViewModel(private val context: Context) : ViewModel() {
         return String.format("%02d:%02d", minutes, seconds)
     }
 
-    // Methode zum Speichern der Historie
-    /*private fun saveHistoryToPreferences() {
-        val gson = Gson()
-        val json = gson.toJson(history)
-        sharedPreferences.edit().putString("plank_history", json).apply()
-    }*/
-
-    // Methode zum Laden der Historie
-   /* private fun loadHistory() {
-        val gson = Gson()
-        val json = sharedPreferences.getString("plank_history", null)
-        val type = object : TypeToken<List<String>>() {}.type
-        history = gson.fromJson(json, type) ?: emptyList()
-    }*/
-
-    // Methode zum Speichern der Zielzeit
+    // Zielzeit speichern über das gemeinsame Repository
     fun saveTargetTime() {
-        sharedPreferences.edit().putInt("target_minutes", minutes).apply()
-        sharedPreferences.edit().putInt("target_seconds", seconds).apply()
+        WorkoutSettingsRepository.savePlankTargetTime(context, minutes, seconds, goalSets)
     }
 
-    // Methode zum Laden der Zielzeit
+    // Zielzeit laden aus dem gemeinsamen Repository
     private fun loadTargetTime() {
-        minutes = sharedPreferences.getInt("target_minutes", 0)
-        seconds = sharedPreferences.getInt("target_seconds", 30)
+        val (min, sec, sets) = WorkoutSettingsRepository.getPlankTargetTime(context)
+        minutes = min
+        seconds = sec
+        goalSets = sets
+    }
+
+    // Update-Funktion für einen Eintrag in der History
+    fun updateRecord(updatedRecord: WorkoutRecord, originalRecord: WorkoutRecord) {
+        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+        val index = currentHistory.indexOf(originalRecord)
+        if(index != -1) {
+            currentHistory[index] = updatedRecord
+            WorkoutHistoryRepository.saveHistory(context, currentHistory)
+            history = currentHistory
+        }
+    }
+    fun deleteRecord(record: WorkoutRecord) {
+        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+        currentHistory.remove(record)
+        WorkoutHistoryRepository.saveHistory(context, currentHistory)
+        history = currentHistory
     }
 
 }
@@ -243,7 +245,7 @@ fun DarkTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = Color(0xFFFFC107),
-            secondary = Color(0xFFDC3545),
+            secondary = Color(0xFF4527A0),
             background = Color(0xFF212529),
             surface = Color(0xFFF8F9FA),
             onPrimary = Color.White,
@@ -313,7 +315,7 @@ fun StartScreen(navController: NavController) {
             }
 
             // Zweite Reihe mit zwei Buttons
-            Row(
+            /*Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -332,7 +334,7 @@ fun StartScreen(navController: NavController) {
                 ) {
                     Text("4", color = MaterialTheme.colorScheme.onPrimary)
                 }
-            }
+            }*/
         }
     }
 }
@@ -341,6 +343,8 @@ fun StartScreen(navController: NavController) {
 fun PlankScreen(viewModel: PlankViewModel) {
     var showDialog by remember { mutableStateOf(false) }
     val filteredHistory = viewModel.history.filter { it.type == WorkoutType.PLANK}
+    var editRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
+    var deleteRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -352,14 +356,21 @@ fun PlankScreen(viewModel: PlankViewModel) {
             TextField(
                 value = viewModel.minutes.toString(),
                 onValueChange = { viewModel.minutes = it.toIntOrNull() ?: 0 },
-                label = { Text("Minutes") },
+                label = { Text("Minuten") },
                 modifier = Modifier.weight(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))
             TextField(
                 value = viewModel.seconds.toString(),
                 onValueChange = { viewModel.seconds = it.toIntOrNull() ?: 30 },
-                label = { Text("Seconds") },
+                label = { Text("Sekunden") },
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            TextField(
+                value = viewModel.goalSets.toString(),
+                onValueChange = { viewModel.goalSets = it.toIntOrNull() ?: 3 },
+                label = { Text("Sätze") },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -379,7 +390,7 @@ fun PlankScreen(viewModel: PlankViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("Plank Verlauf:",color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
+        //Text("Plank Verlauf:",color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
 
         LazyColumn(
             modifier = Modifier
@@ -391,8 +402,8 @@ fun PlankScreen(viewModel: PlankViewModel) {
             items(filteredHistory) { record ->
                 WorkoutHistoryItem(
                     record = record,
-                    onEdit = { /* Bearbeitungslogik */ },
-                    onDelete = { /* Lösch-Logik */ }
+                    onEdit = { editRecord = record },
+                    onDelete = {  deleteRecord = record }
                 )
             }
         }
@@ -433,42 +444,79 @@ fun PlankScreen(viewModel: PlankViewModel) {
     if (showDialog){
         WorkoutAlert(title = "Speichern erfolgreich", message = "Das tägliche Ziel wurde erfolgreich gespeichert", onDismiss = { showDialog = false})
     }
+
+    // Bearbeitungsdialog für Plank-Einträge
+    editRecord?.let { record ->
+        EditPlankDialog(
+            record = record,
+            onDismiss = { editRecord = null },
+            onConfirm = { newMinutes, newSeconds ->
+                val newDuration = (newMinutes * 60 + newSeconds) * 1000
+                val updated = record.copy(durationMillis = newDuration)
+                viewModel.updateRecord(updated, record)
+                editRecord = null
+            }
+        )
+    }
+
+    deleteRecord?.let { record ->
+        DeletePlankDialog(
+            record = record,
+            onDismiss = { deleteRecord = null },
+            onConfirm = {
+                viewModel.deleteRecord(record)
+                deleteRecord = null
+            }
+        )
+    }
+
+
 }
 
 @Composable
 fun PushUpCounterScreen() {
     val context = LocalContext.current
-    val sharedPreferences = context.getSharedPreferences("push_up_prefs", Context.MODE_PRIVATE)
     // Ziel speichern
-    var dailyGoal by remember { mutableIntStateOf(sharedPreferences.getInt("daily_goal", 30)) }
+    //var dailyGoal by remember { mutableIntStateOf(WorkoutSettingsRepository.getPushUpGoal(context)) }
     var count by remember { mutableIntStateOf(0) }
     var history by remember { mutableStateOf(WorkoutHistoryRepository.loadHistory(context)) }
-    var editEntry by remember { mutableStateOf<Pair<String, Int>?>(null) } // Für Bearbeiten
-    var deleteEntry by remember { mutableStateOf<String?>(null) } // Für Bestätigung beim Löschen
+    var editRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
+    var deleteRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
     var showGoalAchievedDialog by remember { mutableStateOf(false) } // Flag für Ziel erreicht Dialog
     var showCalibratedDialog by remember { mutableStateOf(false) }
+    var reps by remember { mutableStateOf("30") } // Standard: 30 Wiederholungen
+    var sets by remember { mutableStateOf("3") }  // Standard: 3 Sätze
 
-    // Fortschritt berechnen
-
-    val currentDate = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-    //val currentDayCount = history[currentDate] ?: 0
-    //val goalReachedToday = currentDayCount == dailyGoal - 1 // Überprüfen, ob Ziel erreicht wurde
-
+    // Abrufen der Push-Up-Ziele aus SharedPreferences
+    LaunchedEffect(context) {
+        val (savedReps, savedSets) = WorkoutSettingsRepository.getPushUpGoal(context)
+        reps = savedReps.toString() // Umwandeln der Int-Werte in String für TextField
+        sets = savedSets.toString() // Umwandeln der Int-Werte in String für TextField
+    }
     // Dialog-Status
     var showDialog by remember { mutableStateOf(false) }
 
-    // Funktionen zum Speichern
-    fun saveGoalToPreferences(value: Int) {
-        sharedPreferences.edit().putInt("daily_goal", value).apply()
-        // Dialog anzeigen
-        showDialog = true
+    // Aktualisieren eines Eintrags in der History
+    fun updateRecord(updatedRecord: WorkoutRecord, originalRecord: WorkoutRecord) {
+        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+        val index = currentHistory.indexOf(originalRecord)
+        if (index != -1) {
+            currentHistory[index] = updatedRecord
+            WorkoutHistoryRepository.saveHistory(context, currentHistory)
+            history = currentHistory
+        }
     }
 
-    fun saveHistoryToPreferences() {
-        val gson = Gson()
-        val json = gson.toJson(history)
-        sharedPreferences.edit().putString("push_up_history", json).apply()
+    // Löschen eines Eintrags aus der History
+    fun deleteRecord(record: WorkoutRecord) {
+        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+        currentHistory.remove(record)
+        WorkoutHistoryRepository.saveHistory(context, currentHistory)
+        history = currentHistory
     }
+
+    // Speichern des Ziels (Vereinheitlicht über WorkoutSettingsRepository)
+
 
     fun addPushUpRecord() {
         val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
@@ -491,263 +539,186 @@ fun PushUpCounterScreen() {
         history = currentHistory
     }
 
-    fun confirmDeleteEntry(date: String) {
-        deleteEntry = date // Setzt das zu löschende Datum
-    }
-    /*
-    fun performDeleteEntry(date: String) {
-        history = history.toMutableMap().apply {
-            remove(date)
-        }
-        saveHistoryToPreferences()
-        deleteEntry = null // Dialog schließen
-    }
+   val sensorListener = remember { PushUpSensorListener(context) { count++; addPushUpRecord() } }
 
-    fun updateEntry(date: String, newCount: Int) {
-        history = history.toMutableMap().apply {
-            if (newCount > 0) put(date, newCount) else remove(date)
-        }
-        saveHistoryToPreferences()
-    }*/
+   LaunchedEffect(Unit) {
+       sensorListener.register()
+   }
 
-    val sensorListener = remember { PushUpSensorListener(context) { count++; addPushUpRecord() } }
+   DisposableEffect(Unit) {
+       onDispose { sensorListener.unregister() }
+   }
 
-    LaunchedEffect(Unit) {
-        sensorListener.register()
-    }
+   val filteredHistory = history.filter { it.type == WorkoutType.PUSH_UP }
 
-    DisposableEffect(Unit) {
-        onDispose { sensorListener.unregister() }
-    }
+   Column(
+       modifier = Modifier
+           .fillMaxSize()
+           .background(MaterialTheme.colorScheme.background)
+           .padding(horizontal = 16.dp, vertical = 64.dp),
+       horizontalAlignment = Alignment.CenterHorizontally
+   ) {
 
-    val filteredHistory = history.filter { it.type == WorkoutType.PUSH_UP }
+       Row(
+           horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
+           verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
+       ) {
+           TextField(
+               value = reps,
+               onValueChange = { reps = it },
+               label = { Text("Wiederholungen") },
+               keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+               modifier = Modifier.weight(1f) // TextField nimmt gleichmäßig Platz ein
+           )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp, vertical = 64.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Ziel-Eingabe
-        OutlinedTextField(
-            value = dailyGoal.toString(),
-            onValueChange = { dailyGoal = it.toIntOrNull() ?: dailyGoal },
-            label = { Text("Tägliches Ziel (Push-Ups)", color = MaterialTheme.colorScheme.primary) },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
+           TextField(
+               value = sets,
+               onValueChange = { sets = it },
+               label = { Text("Sätze") },
+               keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+               modifier = Modifier.weight(1f) // TextField nimmt gleichmäßig Platz ein
+           )
+       }
+
+       Spacer(modifier = Modifier.height(24.dp))
+
+       // Ziel speichern Button
+       Button(
+           onClick = {
+               val repsInt = reps.toIntOrNull() ?: 30
+               val setsInt = sets.toIntOrNull() ?: 3
+               WorkoutSettingsRepository.savePushUpGoal(context, repsInt, setsInt)
+               showDialog = true
+           },
+           modifier = Modifier.fillMaxWidth(),
+           colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+       ) {
+           Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
+       }
+
+       Spacer(modifier = Modifier.height(24.dp))
+
+       /*Text(
+           text = "Push-Up Verlauf",
+           color = MaterialTheme.colorScheme.onPrimary,
+           style = MaterialTheme.typography.titleLarge
+       )*/
+       LazyColumn(
+           modifier = Modifier
+               .weight(1f)
+               .fillMaxWidth(),
+           contentPadding = PaddingValues(vertical = 8.dp)
+       ) {
+           items(filteredHistory) { record ->
+               WorkoutHistoryItem(
+                   record = record,
+                   onEdit = { editRecord = record },
+                   onDelete = { deleteRecord = record }
+               )
+           }
+       }
+
+       Spacer(modifier = Modifier.height(24.dp))
+
+       Text(
+           text = "$count",
+           color = MaterialTheme.colorScheme.onPrimary,
+           style = MaterialTheme.typography.headlineLarge
+       )
+
+       Spacer(modifier = Modifier.height(16.dp))
+
+
+
+
+       Row(
+           horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
+           verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
+       ) {
+           Button(
+               onClick = {
+                   count++
+                   addPushUpRecord()
+               },
+               modifier = Modifier
+                   .fillMaxWidth(), // Volle Breite für den oberen Button
+               colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+           ) {
+               Text(text = "Push-Up hinzufügen", color = MaterialTheme.colorScheme.onPrimary)
+           }
+       }
+
+       Spacer(modifier = Modifier.height(16.dp))
+
+       Row(
+           horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Buttons
+           verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
+       ) {
+           OutlinedButton(
+               onClick = {
+                   sensorListener.calibrate()
+                   showCalibratedDialog = true
+               },
+               modifier = Modifier
+                   .weight(1f) // 50% der Breite, weil beide Buttons das gleiche Gewicht haben
+                   .height(50.dp),
+           ) {
+               Text(text = "Kalibrieren", color = MaterialTheme.colorScheme.onSecondary)
+           }
+
+           Button(
+               onClick = {
+                   count = 0
+                   vibratePhone(context, 100)
+               },
+               modifier = Modifier
+                   .weight(1f) // 50% der Breite
+                   .height(50.dp),
+               colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+           ) {
+               Text(text = "Zurücksetzen", color = MaterialTheme.colorScheme.onSecondary)
+           }
+       }
+   }
+
+   // Einfache AlertDialog-Box anzeigen
+   if (showDialog) {
+       vibratePhone(context,100)
+       WorkoutAlert(title = "Speichern erfolgreich", message = "Das tägliche Ziel wurde erfolgreich gespeichert", onDismiss = { showDialog = false })
+   }
+
+   // Dialog für das Erreichen des Ziels
+  /* if (showGoalAchievedDialog) {
+       vibratePhone(context,400)
+       WorkoutAlert(title = "Ziel erreicht!", message = "Herzlichen Glückwunsch! Du hast dein tägliches Ziel von $dailyGoal Push-Ups erreicht.", onDismiss = { showGoalAchievedDialog = false })
+   }
+*/
+   // Dialog für das Erreichen des Ziels
+   if (showCalibratedDialog) {
+       vibratePhone(context,100)
+       WorkoutAlert(title = "Erfolgreich kalibriert!", message = "Kalibrierung wurde erfolgreich zurückgesetzt.", onDismiss = { showCalibratedDialog = false })
+   }
+
+    editRecord?.let { record ->
+        EditPushUpDialog(
+            record = record,
+            onDismiss = { editRecord = null },
+            onConfirm = { newCount ->
+                val updated = record.copy(count = newCount)
+                updateRecord(updated, record)
+                editRecord = null
+            }
         )
+    }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Ziel speichern Button
-        Button(
-            onClick = {
-                saveGoalToPreferences(dailyGoal)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(text = "Push-Up Verlauf", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleLarge)
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            /*items(history.toList().sortedByDescending { it.first }) { (date, amount) ->
-                val isGoalMet = amount >= dailyGoal
-                val progress = (amount.toFloat() / dailyGoal)
-                // Kachel für jedes Datum
-                ListItem(date, amount, progress, isGoalMet,{ editEntry = date to amount }, { confirmDeleteEntry(date) }, dailyGoal)
-            }*/
-
-            items(filteredHistory) { record ->
-                WorkoutHistoryItem(
-                    record = record,
-                    onEdit = { /* Bearbeitungslogik */ },
-                    onDelete = { /* Lösch-Logik */ }
-                )
+    deleteRecord?.let { record ->
+        DeletePushUpDialog(
+            record = record,
+            onDismiss = { deleteRecord = null },
+            onConfirm = {
+                deleteRecord(record)
+                deleteRecord = null
             }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(text = "Push-Ups: $count", color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                count++
-                addPushUpRecord()
-                /*if (goalReachedToday) {
-                    showGoalAchievedDialog = true // Ziel erreicht, Dialog anzeigen
-                }*/
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-        ) {
-            Text(text = "Push-Up hinzufügen", color = MaterialTheme.colorScheme.onPrimary)
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = {
-                count = 0
-                vibratePhone(context,100)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-        ) {
-            Text(text = "Zurücksetzen", color = MaterialTheme.colorScheme.onSecondary)
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedButton(
-            onClick = {
-                sensorListener.calibrate()
-                showCalibratedDialog = true
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-        ) {
-            Text(text = "Kalibrieren", color = MaterialTheme.colorScheme.onSecondary)
-        }
-    }
-
-    // Einfache AlertDialog-Box anzeigen
-    if (showDialog) {
-        vibratePhone(context,100)
-        WorkoutAlert(title = "Speichern erfolgreich", message = "Das tägliche Ziel wurde erfolgreich gespeichert", onDismiss = { showDialog = false })
-    }
-
-    // Dialog für das Erreichen des Ziels
-    if (showGoalAchievedDialog) {
-        vibratePhone(context,400)
-        WorkoutAlert(title = "Ziel erreicht!", message = "Herzlichen Glückwunsch! Du hast dein tägliches Ziel von $dailyGoal Push-Ups erreicht.", onDismiss = { showGoalAchievedDialog = false })
-    }
-
-    // Dialog für das Erreichen des Ziels
-    if (showCalibratedDialog) {
-        vibratePhone(context,100)
-        WorkoutAlert(title = "Erfolgreich kalibriert!", message = "Kalibrierung wurde erfolgreich zurückgesetzt.", onDismiss = { showCalibratedDialog = false })
-    }
-
-    // Bearbeitungsdialog anzeigen
-    /*editEntry?.let { (date, oldValue) ->
-        EditDialog(date, oldValue) { newCount ->
-            updateEntry(date, newCount)
-            editEntry = null
-        }
-    }
-    */
-    // Bestätigungsdialog für Löschen anzeigen
-    /*deleteEntry?.let { date ->
-        DeleteConfirmationDialog(
-            date = date,
-            onConfirm = { performDeleteEntry(date) },
-            onDismiss = { deleteEntry = null }
         )
-    }*/
-}
-
-@Composable
-fun ListItem(date: String, amount: Int, progress: Float, isSuccess: Boolean, onEdit: () -> Unit, onDelete: () -> Unit, dailyGoal: Int) {
-    // Berechne die Überschüsse (falls das Ziel überschritten wurde)
-    val overGoalList = mutableListOf<Int>()
-    var remainingAmount = amount
-
-    while (remainingAmount > dailyGoal) {
-        overGoalList.add(dailyGoal)
-        remainingAmount -= dailyGoal
     }
-
-    if (remainingAmount > 0) {
-        overGoalList.add(remainingAmount) // Falls noch Restbetrag übrig bleibt
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EAF6)) // Hellgraue Farbe
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp, 16.dp,16.dp,4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f) // Datum & Anzahl links
-            ) {
-                Text(text = date, style = MaterialTheme.typography.bodyLarge)
-                Text(text = "$amount von $dailyGoal Push-Ups", style = MaterialTheme.typography.bodyLarge)
-            }
-            Row(
-                horizontalArrangement = Arrangement.End // Buttons nach rechts schieben
-            ) {
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Löschen", tint = Color.Red)
-                }
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Bearbeiten", tint = Color.Blue)
-                }
-            }
-        }
-        // Fortschrittsanzeigen für das tägliche Ziel
-        Row (
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp,0.dp,16.dp,16.dp)
-            ,
-            verticalAlignment = Alignment.CenterVertically
-        ){
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = if (isSuccess) MaterialTheme.colorScheme.tertiary else Color.Gray,
-            )
-        }
-        // Zweite ProgressBar für den Überschuss
-        overGoalList.forEachIndexed { index, overAmount ->
-            val progressOverGoal = overAmount.toFloat() / dailyGoal
-            if (index > 0){
-                Row (
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp,0.dp,16.dp,16.dp)
-                    ,
-                    verticalAlignment = Alignment.CenterVertically
-                ){
-                    LinearProgressIndicator(
-                        progress = { progressOverGoal },
-                        modifier = Modifier.fillMaxWidth().height(6.dp),
-                        color = if (isSuccess) MaterialTheme.colorScheme.tertiary else Color.Gray,
-                    )
-                }
-            }
-        }
-    }
-}
-
-fun loadHistory(sharedPreferences: android.content.SharedPreferences): Map<String, Int> {
-    val gson = Gson()
-    val json = sharedPreferences.getString("push_up_history", null)
-    val type = object : TypeToken<Map<String, Int>>() {}.type
-    return gson.fromJson(json, type) ?: emptyMap()
 }
