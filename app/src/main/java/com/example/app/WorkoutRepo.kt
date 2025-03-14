@@ -27,10 +27,12 @@ object WorkoutHistoryRepository {
     // Methode, um einen bestehenden Eintrag zu aktualisieren
     fun updateRecord(context: Context, updatedRecord: WorkoutRecord) {
         val currentHistory = loadHistory(context).toMutableList()
-        val index = currentHistory.indexOfFirst { it.date == updatedRecord.date && it.type == updatedRecord.type && it.durationMillis == updatedRecord.durationMillis }
-
+        val index = currentHistory.indexOfFirst {
+            it.date == updatedRecord.date &&
+                    it.type == updatedRecord.type &&
+                    it.durationMillis == updatedRecord.durationMillis
+        }
         if (index != -1) {
-            // Eintrag gefunden, aktualisiere die Sets
             currentHistory[index] = updatedRecord
             saveHistory(context, currentHistory)
         }
@@ -39,14 +41,16 @@ object WorkoutHistoryRepository {
     // Methode, um ein neues Workout hinzuzufügen oder ein bestehendes zu aktualisieren
     fun addOrUpdateRecord(context: Context, newRecord: WorkoutRecord) {
         val currentHistory = loadHistory(context).toMutableList()
-        val existingRecord = currentHistory.find { it.date == newRecord.date && it.type == newRecord.type && it.durationMillis == newRecord.durationMillis }
+        val existingRecord = currentHistory.find {
+            it.date == newRecord.date &&
+                    it.type == newRecord.type &&
+                    it.durationMillis == newRecord.durationMillis
+        }
 
         if (existingRecord != null) {
-            // Wenn der Eintrag existiert, erhöhe die Sets
             val updatedRecord = existingRecord.copy(sets = existingRecord.sets?.plus(1))
             updateRecord(context, updatedRecord)
         } else {
-            // Wenn der Eintrag nicht existiert, füge ihn hinzu
             currentHistory.add(newRecord)
             saveHistory(context, currentHistory)
         }

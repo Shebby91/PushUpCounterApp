@@ -266,7 +266,15 @@ fun AppNavigation() {
     val context = LocalContext.current
     NavHost(navController, startDestination = "start") {
         composable("start") { StartScreen(navController) }
-        composable("pushup_counter") { PushUpCounterScreen() }
+        composable("pushups") { CounterScreen(WorkoutType.PUSH_UP) }
+        composable("squat") { CounterScreen(WorkoutType.SQUAT) }
+        composable("lunge") { CounterScreen(WorkoutType.LUNGE) }
+        composable("rowing") { CounterScreen(WorkoutType.ROWING) }
+        composable("crunches") { CounterScreen(WorkoutType.CRUNCHES) }
+        composable("shoulderpress") { CounterScreen(WorkoutType.SHOULDER_PRESS) }
+        composable("burpees") { CounterScreen(WorkoutType.BURPEES) }
+        composable("legraises") { CounterScreen(WorkoutType.LEG_RAISES) }
+        composable("trizepsdips") { CounterScreen(WorkoutType.TRIZEPS_DIPS) }
         composable("plank") { PlankScreen(PlankViewModel(context)) }
     }
 }
@@ -290,7 +298,7 @@ fun StartScreen(navController: NavController) {
                 contentDescription = "App Logo",
                 modifier = Modifier.size(250.dp)
             )
-            Text(text = "Power-App", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            //Text(text = "Power-App", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
             // Erste Reihe mit zwei Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -298,7 +306,7 @@ fun StartScreen(navController: NavController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { navController.navigate("pushup_counter") },
+                    onClick = { navController.navigate("pushups") },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
@@ -315,17 +323,17 @@ fun StartScreen(navController: NavController) {
             }
 
             // Zweite Reihe mit zwei Buttons
-            /*Row(
+            Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = { navController.navigate("squat") },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("3", color = MaterialTheme.colorScheme.onPrimary)
+                    Text("Squats", color = MaterialTheme.colorScheme.onPrimary)
                 }
                 Button(
                     onClick = { /* TODO */ },
@@ -334,7 +342,95 @@ fun StartScreen(navController: NavController) {
                 ) {
                     Text("4", color = MaterialTheme.colorScheme.onPrimary)
                 }
-            }*/
+            }
+
+            // Dritte Reihe mit zwei Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { navController.navigate("rowing") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Rowing", color = MaterialTheme.colorScheme.onPrimary)
+                }
+                Button(
+                    onClick = { navController.navigate("burpees") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Burpees", color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+
+            //Vierte Reihe mit zwei Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { navController.navigate("lunge") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Lunges", color = MaterialTheme.colorScheme.onPrimary)
+                }
+                Button(
+                    onClick = { navController.navigate("legraises") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Leg Raises", color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+            //Fünfte Reihe mit zwei Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { navController.navigate("shoulderpress") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Shoulder Press", color = MaterialTheme.colorScheme.onPrimary)
+                }
+                Button(
+                    onClick = { navController.navigate("trizepsdips") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Trizeps-Dips", color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+
+            //Fünfte Reihe mit zwei Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { navController.navigate("crunches") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Crunches", color = MaterialTheme.colorScheme.onPrimary)
+                }
+                Button(
+                    onClick = { /* TODO */ },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text("Daily Goals", color = MaterialTheme.colorScheme.onSecondary)
+                }
+            }
+
         }
     }
 }
@@ -474,24 +570,71 @@ fun PlankScreen(viewModel: PlankViewModel) {
 }
 
 @Composable
-fun PushUpCounterScreen() {
+fun CounterScreen(workoutType: WorkoutType) {
     val context = LocalContext.current
-    // Ziel speichern
-    //var dailyGoal by remember { mutableIntStateOf(WorkoutSettingsRepository.getPushUpGoal(context)) }
     var count by remember { mutableIntStateOf(0) }
     var history by remember { mutableStateOf(WorkoutHistoryRepository.loadHistory(context)) }
     var editRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
     var deleteRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
-    var showGoalAchievedDialog by remember { mutableStateOf(false) } // Flag für Ziel erreicht Dialog
     var showCalibratedDialog by remember { mutableStateOf(false) }
-    var reps by remember { mutableStateOf("30") } // Standard: 30 Wiederholungen
-    var sets by remember { mutableStateOf("3") }  // Standard: 3 Sätze
+    var reps by remember { mutableStateOf("30") }
+    var sets by remember { mutableStateOf("3") }
 
     // Abrufen der Push-Up-Ziele aus SharedPreferences
     LaunchedEffect(context) {
-        val (savedReps, savedSets) = WorkoutSettingsRepository.getPushUpGoal(context)
-        reps = savedReps.toString() // Umwandeln der Int-Werte in String für TextField
-        sets = savedSets.toString() // Umwandeln der Int-Werte in String für TextField
+        when (workoutType) {
+            WorkoutType.PUSH_UP -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getPushUpGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.SQUAT -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getSquatGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.LUNGE -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getLungeGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.ROWING -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getRowingGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.CRUNCHES -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getCrunchesGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.SHOULDER_PRESS -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getShoulderPressGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.BURPEES -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getBurpeesGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.LEG_RAISES -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getLegRaisesGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.TRIZEPS_DIPS -> {
+                val (savedReps, savedSets) = WorkoutSettingsRepository.getTrizepsDipsGoal(context)
+                reps = savedReps.toString()
+                sets = savedSets.toString()
+            }
+            WorkoutType.PLANK -> {
+                // Hier kannst du die Darstellung für Planks anpassen
+                val (minutes, seconds, savedSets) = WorkoutSettingsRepository.getPlankTargetTime(context)
+                reps = minutes.toString()  // Beispiel: Minuten als 'Reps'
+                sets = seconds.toString()  // Beispiel: Sekunden als 'Sätze'
+            }
+        }
     }
     // Dialog-Status
     var showDialog by remember { mutableStateOf(false) }
@@ -518,28 +661,24 @@ fun PushUpCounterScreen() {
     // Speichern des Ziels (Vereinheitlicht über WorkoutSettingsRepository)
 
 
-    fun addPushUpRecord() {
+    fun addWorkoutRecord() {
         val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-        // Hole ggf. bereits vorhandene Daten für den Tag
         val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
-
-        // Prüfen, ob für heute bereits ein Push‑Up-Record existiert:
-        val existingRecord = currentHistory.find { it.date == date && it.type == WorkoutType.PUSH_UP }
+        // Für wiederholungsbasierte Workouts (Push‑Ups, Kniebeugen)
+        val existingRecord = currentHistory.find { it.date == date && it.type == workoutType }
         if (existingRecord != null) {
-            // Erhöhe die Anzahl
             val updatedRecord = existingRecord.copy(count = (existingRecord.count ?: 0) + 1)
             currentHistory.remove(existingRecord)
             currentHistory.add(updatedRecord)
         } else {
-            // Erstelle einen neuen Record
-            val newRecord = WorkoutRecord(date = date, type = WorkoutType.PUSH_UP, count = 1)
+            val newRecord = WorkoutRecord(date = date, type = workoutType, count = 1)
             currentHistory.add(newRecord)
         }
         WorkoutHistoryRepository.saveHistory(context, currentHistory)
         history = currentHistory
     }
 
-   val sensorListener = remember { PushUpSensorListener(context) { count++; addPushUpRecord() } }
+   val sensorListener = remember { PushUpSensorListener(context) { count++; addWorkoutRecord() } }
 
    LaunchedEffect(Unit) {
        sensorListener.register()
@@ -549,7 +688,7 @@ fun PushUpCounterScreen() {
        onDispose { sensorListener.unregister() }
    }
 
-   val filteredHistory = history.filter { it.type == WorkoutType.PUSH_UP }
+    val filteredHistory = history.filter { it.type == workoutType }
 
    Column(
        modifier = Modifier
@@ -587,7 +726,18 @@ fun PushUpCounterScreen() {
            onClick = {
                val repsInt = reps.toIntOrNull() ?: 30
                val setsInt = sets.toIntOrNull() ?: 3
-               WorkoutSettingsRepository.savePushUpGoal(context, repsInt, setsInt)
+               when (workoutType) {
+                   WorkoutType.PUSH_UP -> WorkoutSettingsRepository.savePushUpGoal(context, repsInt, setsInt)
+                   WorkoutType.SQUAT -> WorkoutSettingsRepository.saveSquatGoal(context, repsInt, setsInt)
+                   WorkoutType.LUNGE -> WorkoutSettingsRepository.saveLungeGoal(context, repsInt, setsInt)
+                   WorkoutType.ROWING -> WorkoutSettingsRepository.saveRowingGoal(context, repsInt, setsInt)
+                   WorkoutType.CRUNCHES -> WorkoutSettingsRepository.saveCrunchesGoal(context, repsInt, setsInt)
+                   WorkoutType.SHOULDER_PRESS -> WorkoutSettingsRepository.saveShoulderPressGoal(context, repsInt, setsInt)
+                   WorkoutType.BURPEES -> WorkoutSettingsRepository.saveBurpeesGoal(context, repsInt, setsInt)
+                   WorkoutType.LEG_RAISES -> WorkoutSettingsRepository.saveLegRaisesGoal(context, repsInt, setsInt)
+                   WorkoutType.TRIZEPS_DIPS -> WorkoutSettingsRepository.saveTrizepsDipsGoal(context, repsInt, setsInt)
+                   WorkoutType.PLANK -> WorkoutSettingsRepository.savePlankTargetTime(context, repsInt, setsInt, setsInt) // Anpassen, falls nötig
+               }
                showDialog = true
            },
            modifier = Modifier.fillMaxWidth(),
@@ -638,13 +788,27 @@ fun PushUpCounterScreen() {
            Button(
                onClick = {
                    count++
-                   addPushUpRecord()
+                   addWorkoutRecord()
                },
                modifier = Modifier
                    .fillMaxWidth(), // Volle Breite für den oberen Button
                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
            ) {
-               Text(text = "Push-Up hinzufügen", color = MaterialTheme.colorScheme.onPrimary)
+               Text(
+                   text = when (workoutType) {
+                       WorkoutType.PUSH_UP -> "Push‑Up hinzufügen"
+                       WorkoutType.SQUAT -> "Kniebeuge hinzufügen"
+                       WorkoutType.LUNGE -> "Ausfallschritt hinzufügen"
+                       WorkoutType.ROWING -> "Rudern hinzufügen"
+                       WorkoutType.CRUNCHES -> "Bauchpresse hinzufügen"
+                       WorkoutType.SHOULDER_PRESS -> "Schulterpresse hinzufügen"
+                       WorkoutType.BURPEES -> "Burpee hinzufügen"
+                       WorkoutType.LEG_RAISES -> "Beinheben hinzufügen"
+                       WorkoutType.TRIZEPS_DIPS -> "Dips hinzufügen"
+                       WorkoutType.PLANK -> "Plank hinzufügen"
+                   },
+                   color = MaterialTheme.colorScheme.onPrimary
+               )
            }
        }
 

@@ -24,6 +24,14 @@ fun WorkoutHistoryItem(
     // Unterschiedliche Detailtexte je nach Typ
     val detailsText = when (record.type) {
         WorkoutType.PUSH_UP -> "${record.count ?: 0} Push‑Ups"
+        WorkoutType.SQUAT -> "${record.count ?: 0} Kniebeugen"
+        WorkoutType.LUNGE -> "${record.count ?: 0} Schritte"
+        WorkoutType.ROWING -> "${record.count ?: 0} Rudern"
+        WorkoutType.CRUNCHES -> "${record.count ?: 0} Bauchpresse"
+        WorkoutType.SHOULDER_PRESS-> "${record.count ?: 0} Schulterpresse"
+        WorkoutType.BURPEES-> "${record.count ?: 0} Burpees"
+        WorkoutType.LEG_RAISES-> "${record.count ?: 0} Beinheben"
+        WorkoutType.TRIZEPS_DIPS-> "${record.count ?: 0} Dips"
         WorkoutType.PLANK -> {
             val (targetMinutes, targetSeconds, _) = WorkoutSettingsRepository.getPlankTargetTime(context)
             "$targetMinutes m $targetSeconds s Plank"
@@ -37,6 +45,62 @@ fun WorkoutHistoryItem(
             val completedPushUps = record.count ?: 0
             // Errechnete Sätze (begrenzen auf das Ziel)
             val setsDone = (completedPushUps / goalReps).coerceAtMost(goalSets)
+            Pair(goalSets, setsDone)
+        }
+        WorkoutType.SQUAT -> {
+            val (goalReps, goalSets) = WorkoutSettingsRepository.getSquatGoal(context)
+            val completedSquats = record.count ?: 0
+            // Errechnete Sätze (begrenzen auf das Ziel)
+            val setsDone = (completedSquats / goalReps).coerceAtMost(goalSets)
+            Pair(goalSets, setsDone)
+        }
+        WorkoutType.LUNGE -> {
+            val (goalReps, goalSets) = WorkoutSettingsRepository.getLungeGoal(context)
+            val completedLunges = record.count ?: 0
+            // Errechnete Sätze (begrenzen auf das Ziel)
+            val setsDone = (completedLunges / goalReps).coerceAtMost(goalSets)
+            Pair(goalSets, setsDone)
+        }
+        WorkoutType.ROWING-> {
+            val (goalReps, goalSets) = WorkoutSettingsRepository.getRowingGoal(context)
+            val completedRowing = record.count ?: 0
+            // Errechnete Sätze (begrenzen auf das Ziel)
+            val setsDone = (completedRowing / goalReps).coerceAtMost(goalSets)
+            Pair(goalSets, setsDone)
+        }
+        WorkoutType.CRUNCHES-> {
+            val (goalReps, goalSets) = WorkoutSettingsRepository.getCrunchesGoal(context)
+            val completedCrunches = record.count ?: 0
+            // Errechnete Sätze (begrenzen auf das Ziel)
+            val setsDone = (completedCrunches / goalReps).coerceAtMost(goalSets)
+            Pair(goalSets, setsDone)
+        }
+        WorkoutType.SHOULDER_PRESS-> {
+            val (goalReps, goalSets) = WorkoutSettingsRepository.getShoulderPressGoal(context)
+            val completedShoulderPress = record.count ?: 0
+            // Errechnete Sätze (begrenzen auf das Ziel)
+            val setsDone = (completedShoulderPress / goalReps).coerceAtMost(goalSets)
+            Pair(goalSets, setsDone)
+        }
+        WorkoutType.BURPEES-> {
+            val (goalReps, goalSets) = WorkoutSettingsRepository.getBurpeesGoal(context)
+            val completedBurpees = record.count ?: 0
+            // Errechnete Sätze (begrenzen auf das Ziel)
+            val setsDone = (completedBurpees / goalReps).coerceAtMost(goalSets)
+            Pair(goalSets, setsDone)
+        }
+        WorkoutType.LEG_RAISES-> {
+            val (goalReps, goalSets) = WorkoutSettingsRepository.getLegRaisesGoal(context)
+            val completedLegRaises = record.count ?: 0
+            // Errechnete Sätze (begrenzen auf das Ziel)
+            val setsDone = (completedLegRaises / goalReps).coerceAtMost(goalSets)
+            Pair(goalSets, setsDone)
+        }
+        WorkoutType.TRIZEPS_DIPS-> {
+            val (goalReps, goalSets) = WorkoutSettingsRepository.getTrizepsDipsGoal(context)
+            val completedDips = record.count ?: 0
+            // Errechnete Sätze (begrenzen auf das Ziel)
+            val setsDone = (completedDips / goalReps).coerceAtMost(goalSets)
             Pair(goalSets, setsDone)
         }
         WorkoutType.PLANK -> {

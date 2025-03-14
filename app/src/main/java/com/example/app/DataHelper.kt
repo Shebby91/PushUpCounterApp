@@ -2,7 +2,15 @@ package com.example.app
 
 enum class WorkoutType {
     PUSH_UP,
-    PLANK
+    PLANK,
+    SQUAT,
+    LUNGE,
+    ROWING,
+    CRUNCHES,
+    SHOULDER_PRESS,
+    BURPEES,
+    LEG_RAISES,
+    TRIZEPS_DIPS
 }
 
 data class WorkoutRecord(
