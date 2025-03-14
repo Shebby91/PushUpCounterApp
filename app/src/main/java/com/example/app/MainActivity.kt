@@ -231,7 +231,7 @@ fun AppNavigation() {
         composable("trizepsdips") { CounterScreen(WorkoutType.TRIZEPS_DIPS) }
         composable("planks") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.PLANK)) }
         composable("climber") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.MOUNTAIN_CLIMBER)) }
-        //composable("overview") {  }
+        composable("overview") { DailyOverviewScreen() }
     }
 }
 @Composable
@@ -253,6 +253,9 @@ fun StartScreen(navController: NavController) {
                 contentDescription = "App Logo",
                 modifier = Modifier.size(250.dp)
             )
+            Text(text = "Welcome back!", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            Text(text = "Sebastian", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(24.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -382,7 +385,7 @@ fun StartScreen(navController: NavController) {
                     Text("Crunches", color = MaterialTheme.colorScheme.onPrimary)
                 }
                 Button(
-                    onClick = { /*navController.navigate("overview")*/ },
+                    onClick = { navController.navigate("overview") },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
@@ -789,4 +792,150 @@ fun CounterScreen(workoutType: WorkoutType) {
             }
         )
    }
+}
+
+@Composable
+fun DailyOverviewScreen() {
+    val context = LocalContext.current
+    // Alle gespeicherten Records laden
+    val allRecords = WorkoutHistoryRepository.loadHistory(context)
+    // Gruppiere die Records nach Datum (das Datumsformat muss dabei konsistent sein)
+    val recordsByDate = allRecords.groupBy { it.date }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Daily Goals",
+            color = MaterialTheme.colorScheme.onPrimary,
+            style = MaterialTheme.typography.headlineLarge
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        recordsByDate.forEach { (date, recordsForDate) ->
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                            Text(text = date, color = MaterialTheme.colorScheme.onSecondary)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Gruppiere für den jeweiligen Tag die Records nach Workout-Typ
+                            val recordsByType = recordsForDate.groupBy { it.type }
+                            recordsByType.forEach { (type, recordsOfType) ->
+                                // Berechnung der erreichten und der Ziel-Sätze je nach Typ:
+                                val (targetSets, achievedSets) = when (type) {
+                                    // Wiederholungsbasierte Workouts
+                                    WorkoutType.PUSH_UP -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getPushUpGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        // Errechnete Sätze = (gesamte Wiederholungen / Wiederholungen pro Satz), begrenzt auf das Ziel
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    WorkoutType.SQUAT -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getSquatGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    WorkoutType.LUNGE -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getLungeGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    WorkoutType.ROWING -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getRowingGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    WorkoutType.CRUNCHES -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getCrunchesGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    WorkoutType.SHOULDER_PRESS -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getShoulderPressGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    WorkoutType.BURPEES -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getBurpeesGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    WorkoutType.LEG_RAISES -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getLegRaisesGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    WorkoutType.TRIZEPS_DIPS -> {
+                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getTrizepsDipsGoal(context)
+                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
+                                        Pair(goalSets, achieved)
+                                    }
+                                    // Timer-basierte Workouts (PLANK und MOUNTAIN_CLIMBER)
+                                    WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> {
+                                        val (_, _, target) = WorkoutSettingsRepository.getTargetTime(context, type)
+                                        val totalSets = recordsOfType.sumOf { it.sets ?: 0 }
+                                        Pair(target, totalSets)
+                                    }
+                                    else -> Pair(0, 0)
+                                }
+
+                                val goalReached = achievedSets >= targetSets
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
+
+                                ) {
+                                    Text(
+                                        text = type.name,
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    /*Text(
+                                        text = "$achievedSets / $targetSets",
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )*/
+                                    Text(
+                                        text = if (goalReached) "Ziel erreicht" else "Ziel nicht erreicht",
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (goalReached)
+                                            MaterialTheme.colorScheme.tertiary
+                                        else
+                                            MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

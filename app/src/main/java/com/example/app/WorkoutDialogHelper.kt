@@ -69,7 +69,6 @@ fun EditCounterWorkoutDialog(
     )
 }
 
-
 @Composable
 fun EditWorkoutDialog(
     record: WorkoutRecord,
@@ -78,8 +77,8 @@ fun EditWorkoutDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Eintrag bearbeiten") },
-        text = { Text("Hier kannst du die Werte bearbeiten (nicht vollständig implementiert).") },
+        title = { Text("Eintrag bearbeiten",color = MaterialTheme.colorScheme.onTertiary) },
+        text = { Text("Hier kannst du die Werte bearbeiten (nicht vollständig implementiert).",color = MaterialTheme.colorScheme.onTertiary) },
         confirmButton = {
             Button(onClick = { onConfirm(0, 0) }) {
                 Text("Speichern")
@@ -101,8 +100,8 @@ fun DeleteWorkoutDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Eintrag löschen") },
-        text = { Text("Möchtest du diesen Eintrag wirklich löschen?") },
+        title = { Text("Eintrag löschen",color = MaterialTheme.colorScheme.onTertiary) },
+        text = { Text("Möchtest du diesen Eintrag wirklich löschen?",color = MaterialTheme.colorScheme.onTertiary) },
         confirmButton = {
             Button(onClick = onConfirm) {
                 Text("Löschen")
