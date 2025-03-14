@@ -2,7 +2,6 @@ package com.example.app
 
 import android.content.Context
 
-
 object WorkoutSettingsRepository {
     private const val PREFS_NAME = "workout_settings"
     // Schlüssel für PLANK

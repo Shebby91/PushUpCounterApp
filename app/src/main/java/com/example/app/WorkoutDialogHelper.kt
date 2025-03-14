@@ -1,5 +1,4 @@
 package com.example.app
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.AlertDialog
@@ -14,7 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.KeyboardType
 
 @Composable
-fun DeletePushUpDialog(
+fun DeleteCounterWorkoutDialog(
     record: WorkoutRecord,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
@@ -37,30 +36,7 @@ fun DeletePushUpDialog(
 }
 
 @Composable
-fun DeletePlankDialog(
-    record: WorkoutRecord,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Eintrag löschen",color = MaterialTheme.colorScheme.onTertiary) },
-        text = { Text("Möchtest du diesen Eintrag wirklich löschen?",color = MaterialTheme.colorScheme.onTertiary) },
-        confirmButton = {
-            Button(onClick = onConfirm) {
-                Text("Löschen")
-            }
-        },
-        dismissButton = {
-            Button(onClick = onDismiss) {
-                Text("Abbrechen")
-            }
-        }
-    )
-}
-
-@Composable
-fun EditPushUpDialog(
+fun EditCounterWorkoutDialog(
     record: WorkoutRecord,
     onDismiss: () -> Unit,
     onConfirm: (newCount: Int) -> Unit
@@ -73,7 +49,7 @@ fun EditPushUpDialog(
             OutlinedTextField(
                 value = newCountText,
                 onValueChange = { newCountText = it },
-                label = { Text("Anzahl Push-Ups",color = MaterialTheme.colorScheme.onTertiary) },
+                label = { Text("Anzahl",color = MaterialTheme.colorScheme.onTertiary) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         },

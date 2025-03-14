@@ -35,6 +35,7 @@ import java.util.*
 import kotlin.math.abs
 import androidx.compose.foundation.Image
 import android.os.CountDownTimer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.ViewModel
 
 class MainActivity : ComponentActivity() {
@@ -44,75 +45,57 @@ class MainActivity : ComponentActivity() {
         setContent {
             DarkTheme {
                 AppNavigation()
-                //PushUpCounterScreen()
             }
         }
     }
 }
-
 class PushUpSensorListener(context: Context, private val onPushUpDetected: () -> Unit) :
     SensorEventListener {
-
     private var sensorManager: SensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private var accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-
     private var previousZ = 0f
     private var pushUpInProgress = false
     private var pushUpStartTime = 0L
     private var lastPushUpTime = 0L
-
     private val minPushUpDuration = 400  // Angepasst: Realistischere Zeit
     private val minZdiff = 1.5f
     private val minTotalMovement = 2.5f  // Angepasst: Weniger Distanz notwendig
-
     private var zValues = mutableListOf<Float>()
-
     private var calibratedZ = 0f  // Neue Variable: Speichert den Kalibrierungswert
     private var isCalibrated = false  // Neue Variable: Zeigt an, ob kalibriert wurde
-
     // Vibrator für Vibrationseffekt
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-
     fun register() {
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
         }
     }
-
     fun unregister() {
         sensorManager.unregisterListener(this)
     }
-
     fun calibrate() {
         isCalibrated = false  // Vorherige Kalibrierung zurücksetzen
     }
-
     override fun onSensorChanged(event: SensorEvent?) {
         event?.let {
             val currentZ = it.values[2]
             val timestamp = System.currentTimeMillis()
-
             if (!isCalibrated) {
                 calibratedZ = currentZ
                 isCalibrated = true
                 return
             }
-
             if (zValues.size > 5) zValues.removeAt(0)
             zValues.add(currentZ)
             val smoothedZ = zValues.average().toFloat()
-
             val deltaZ = previousZ - smoothedZ
-
             if (!pushUpInProgress && deltaZ > minZdiff) {
                 pushUpInProgress = true
                 pushUpStartTime = timestamp
             }
-
             if (pushUpInProgress && smoothedZ - previousZ > minZdiff) {
                 val pushUpDuration = timestamp - pushUpStartTime
                 val totalMovement = abs(previousZ - smoothedZ)
-
                 if (pushUpDuration > minPushUpDuration && totalMovement > minTotalMovement) {
                     pushUpInProgress = false
                     lastPushUpTime = timestamp
@@ -120,22 +103,17 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
                     vibratePhone()
                 }
             }
-
             previousZ = smoothedZ
         }
     }
-
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-
     private fun vibratePhone() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Neue Vibrations-API für Android 8+ (Oreo)
             vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
         }
     }
-
 }
-
 @SuppressLint("StaticFieldLeak")
 class WorkoutTimerViewModel(private val context: Context, val workoutType: WorkoutType) : ViewModel() {
     var minutes by mutableIntStateOf(0)
@@ -147,11 +125,9 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
     var progress by mutableFloatStateOf(0f)
     var remainingTimeText by mutableStateOf("")
     private var timer: CountDownTimer? = null
-
     init {
         loadTargetTime()
     }
-
     fun startTimer() {
         if (isRunning) return
         val totalMillis = (minutes * 60 + seconds) * 1000L
@@ -159,59 +135,49 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
         isRunning = true
         progress = 0f
         remainingTimeText = formatTime(remainingTime)
-
         timer = object : CountDownTimer(totalMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 remainingTime = millisUntilFinished.toInt()
                 remainingTimeText = formatTime(remainingTime)
                 progress = (1 - millisUntilFinished.toFloat() / totalMillis)
             }
-
             override fun onFinish() {
                 isRunning = false
                 saveWorkoutRecord()
             }
         }.start()
     }
-
     fun stopTimer() {
         timer?.cancel()
         isRunning = false
     }
-
     @SuppressLint("DefaultLocale")
     private fun formatTime(timeInMillis: Int): String {
         val minutes = timeInMillis / 1000 / 60
         val seconds = (timeInMillis / 1000) % 60
         return String.format("%02d:%02d", minutes, seconds)
     }
-
     private fun saveWorkoutRecord() {
         val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
         val totalMilliseconds = (minutes * 60 + seconds) * 1000
-
         val record = WorkoutRecord(
             date = date,
             type = workoutType,
             durationMillis = totalMilliseconds,
             sets = 1
         )
-
         WorkoutHistoryRepository.addOrUpdateRecord(context, record)
         history = WorkoutHistoryRepository.loadHistory(context)
     }
-
     fun saveTargetTime() {
         WorkoutSettingsRepository.saveTargetTime(context, workoutType, minutes, seconds, goalSets)
     }
-
     private fun loadTargetTime() {
         val (min, sec, sets) = WorkoutSettingsRepository.getTargetTime(context, workoutType)
         minutes = min
         seconds = sec
         goalSets = sets
     }
-
     fun updateRecord(updatedRecord: WorkoutRecord, originalRecord: WorkoutRecord) {
         val currentHistory = history.toMutableList()
         val index = currentHistory.indexOf(originalRecord)
@@ -221,7 +187,6 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
             history = currentHistory
         }
     }
-
     fun deleteRecord(record: WorkoutRecord) {
         val currentHistory = history.toMutableList()
         currentHistory.remove(record)
@@ -230,9 +195,6 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
     }
 
 }
-
-
-
 @Composable
 fun DarkTheme(content: @Composable () -> Unit) {
     MaterialTheme(
@@ -252,7 +214,6 @@ fun DarkTheme(content: @Composable () -> Unit) {
         content = content
     )
 }
-
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
@@ -273,7 +234,6 @@ fun AppNavigation() {
         //composable("overview") {  }
     }
 }
-
 @Composable
 fun StartScreen(navController: NavController) {
     Box(
@@ -293,31 +253,15 @@ fun StartScreen(navController: NavController) {
                 contentDescription = "App Logo",
                 modifier = Modifier.size(250.dp)
             )
-            //Text(text = "Power-App", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
-            // Erste Reihe mit zwei Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = { navController.navigate("pushups") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Push-Ups", color = MaterialTheme.colorScheme.onPrimary)
-                }
-
-                Button(
-                    onClick = { navController.navigate("planks") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Planks", color = MaterialTheme.colorScheme.onPrimary)
-                }
+                Text(text = "Day: 1, 3, 5", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+                Text(text = "Day: 2, 4",modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
             }
-
-            // Zweite Reihe mit zwei Buttons
+            // Erste Reihe mit zwei Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -331,37 +275,15 @@ fun StartScreen(navController: NavController) {
                     Text("Squats", color = MaterialTheme.colorScheme.onPrimary)
                 }
                 Button(
-                    onClick = { navController.navigate("climber") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("MountainClimber", color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
-
-            // Dritte Reihe mit zwei Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = { navController.navigate("rowing") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Rowing", color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Button(
                     onClick = { navController.navigate("burpees") },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Burpees", color = MaterialTheme.colorScheme.onPrimary)
                 }
-            }
 
-            //Vierte Reihe mit zwei Buttons
+            }
+            // Zweite Reihe mit zwei Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -373,6 +295,49 @@ fun StartScreen(navController: NavController) {
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Lunges", color = MaterialTheme.colorScheme.onPrimary)
+                }
+                Button(
+                    onClick = { navController.navigate("climber") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("MountainClimber", color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+            // Dritte Reihe mit zwei Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { navController.navigate("pushups") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Push-Ups", color = MaterialTheme.colorScheme.onPrimary)
+                }
+                Button(
+                    onClick = { navController.navigate("planks") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Planks", color = MaterialTheme.colorScheme.onPrimary)
+                }
+
+            }
+            //Vierte Reihe mit zwei Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { navController.navigate("shoulderpress") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Shoulder Press", color = MaterialTheme.colorScheme.onPrimary)
                 }
                 Button(
                     onClick = { navController.navigate("legraises") },
@@ -389,11 +354,11 @@ fun StartScreen(navController: NavController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { navController.navigate("shoulderpress") },
+                    onClick = { navController.navigate("rowing") },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("Shoulder Press", color = MaterialTheme.colorScheme.onPrimary)
+                    Text("Rowing", color = MaterialTheme.colorScheme.onPrimary)
                 }
                 Button(
                     onClick = { navController.navigate("trizepsdips") },
@@ -403,7 +368,6 @@ fun StartScreen(navController: NavController) {
                     Text("Trizeps-Dips", color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
-
             //Fünfte Reihe mit zwei Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -429,7 +393,6 @@ fun StartScreen(navController: NavController) {
         }
     }
 }
-
 @Composable
 fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
     var showDialog by remember { mutableStateOf(false) }
@@ -444,8 +407,6 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
             .padding(horizontal = 16.dp, vertical = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        //Text(text = "${viewModel.workoutType.name} Timer", style = MaterialTheme.typography.headlineLarge)
-
         Row {
             TextField(
                 value = viewModel.minutes.toString(),
@@ -468,9 +429,7 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
                 modifier = Modifier.weight(1f)
             )
         }
-
         Spacer(modifier = Modifier.height(24.dp))
-
         Button(
             onClick = {
                 viewModel.saveTargetTime()
@@ -481,9 +440,7 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
         ) {
             Text(text = "Ziel speichern")
         }
-
         Spacer(modifier = Modifier.height(24.dp))
-
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -494,20 +451,15 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
                 WorkoutHistoryItem(record = record, onEdit = { editRecord = record }, onDelete = { deleteRecord = record })
             }
         }
-
         Spacer(modifier = Modifier.height(24.dp))
-
         Text(text = viewModel.remainingTimeText, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(24.dp))
-
         Button(
             onClick = { viewModel.startTimer() },
             enabled = !viewModel.isRunning,
             modifier = Modifier.fillMaxWidth().height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-        ) /*{
-            Text(text = "${viewModel.workoutType.name} starten")
-        }*/
+        )
         {
             Text(
                 text = when (viewModel.workoutType.name) {
@@ -518,9 +470,7 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
-
         Spacer(modifier = Modifier.height(24.dp))
-
         Button(
             onClick = { viewModel.stopTimer() },
             enabled = viewModel.isRunning,
@@ -530,7 +480,6 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
             Text(text = "Stop")
         }
     }
-
     if (showDialog) {
         WorkoutAlert(
             title = "Speichern erfolgreich",
@@ -538,7 +487,6 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
             onDismiss = { showDialog = false }
         )
     }
-
     editRecord?.let { record ->
         EditWorkoutDialog(record = record, onDismiss = { editRecord = null }) { newMinutes, newSeconds ->
             val newDuration = (newMinutes * 60 + newSeconds) * 1000
@@ -547,7 +495,6 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
             editRecord = null
         }
     }
-
     deleteRecord?.let { record ->
         DeleteWorkoutDialog(record = record, onDismiss = { deleteRecord = null }) {
             viewModel.deleteRecord(record)
@@ -555,7 +502,6 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
         }
     }
 }
-
 @Composable
 fun CounterScreen(workoutType: WorkoutType) {
     val context = LocalContext.current
@@ -566,7 +512,6 @@ fun CounterScreen(workoutType: WorkoutType) {
     var showCalibratedDialog by remember { mutableStateOf(false) }
     var reps by remember { mutableStateOf("30") }
     var sets by remember { mutableStateOf("3") }
-
     // Abrufen der Push-Up-Ziele aus SharedPreferences
     LaunchedEffect(context) {
         when (workoutType) {
@@ -635,7 +580,6 @@ fun CounterScreen(workoutType: WorkoutType) {
     }
     // Dialog-Status
     var showDialog by remember { mutableStateOf(false) }
-
     // Aktualisieren eines Eintrags in der History
     fun updateRecord(updatedRecord: WorkoutRecord, originalRecord: WorkoutRecord) {
         val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
@@ -646,7 +590,6 @@ fun CounterScreen(workoutType: WorkoutType) {
             history = currentHistory
         }
     }
-
     // Löschen eines Eintrags aus der History
     fun deleteRecord(record: WorkoutRecord) {
         val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
@@ -654,10 +597,7 @@ fun CounterScreen(workoutType: WorkoutType) {
         WorkoutHistoryRepository.saveHistory(context, currentHistory)
         history = currentHistory
     }
-
     // Speichern des Ziels (Vereinheitlicht über WorkoutSettingsRepository)
-
-
     fun addWorkoutRecord() {
         val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
         val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
@@ -674,19 +614,14 @@ fun CounterScreen(workoutType: WorkoutType) {
         WorkoutHistoryRepository.saveHistory(context, currentHistory)
         history = currentHistory
     }
-
    val sensorListener = remember { PushUpSensorListener(context) { count++; addWorkoutRecord() } }
-
    LaunchedEffect(Unit) {
        sensorListener.register()
    }
-
    DisposableEffect(Unit) {
        onDispose { sensorListener.unregister() }
    }
-
-    val filteredHistory = history.filter { it.type == workoutType }
-
+   val filteredHistory = history.filter { it.type == workoutType }
    Column(
        modifier = Modifier
            .fillMaxSize()
@@ -694,7 +629,6 @@ fun CounterScreen(workoutType: WorkoutType) {
            .padding(horizontal = 16.dp, vertical = 64.dp),
        horizontalAlignment = Alignment.CenterHorizontally
    ) {
-
        Row(
            horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
            verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
@@ -706,7 +640,6 @@ fun CounterScreen(workoutType: WorkoutType) {
                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                modifier = Modifier.weight(1f) // TextField nimmt gleichmäßig Platz ein
            )
-
            TextField(
                value = sets,
                onValueChange = { sets = it },
@@ -715,9 +648,7 @@ fun CounterScreen(workoutType: WorkoutType) {
                modifier = Modifier.weight(1f) // TextField nimmt gleichmäßig Platz ein
            )
        }
-
        Spacer(modifier = Modifier.height(24.dp))
-
        // Ziel speichern Button
        Button(
            onClick = {
@@ -743,14 +674,7 @@ fun CounterScreen(workoutType: WorkoutType) {
        ) {
            Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
        }
-
        Spacer(modifier = Modifier.height(24.dp))
-
-       /*Text(
-           text = "Push-Up Verlauf",
-           color = MaterialTheme.colorScheme.onPrimary,
-           style = MaterialTheme.typography.titleLarge
-       )*/
        LazyColumn(
            modifier = Modifier
                .weight(1f)
@@ -765,20 +689,13 @@ fun CounterScreen(workoutType: WorkoutType) {
                )
            }
        }
-
        Spacer(modifier = Modifier.height(24.dp))
-
        Text(
            text = "$count",
            color = MaterialTheme.colorScheme.onPrimary,
            style = MaterialTheme.typography.headlineLarge
        )
-
        Spacer(modifier = Modifier.height(16.dp))
-
-
-
-
        Row(
            horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
            verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
@@ -810,9 +727,7 @@ fun CounterScreen(workoutType: WorkoutType) {
                )
            }
        }
-
        Spacer(modifier = Modifier.height(16.dp))
-
        Row(
            horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Buttons
            verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
@@ -843,27 +758,18 @@ fun CounterScreen(workoutType: WorkoutType) {
            }
        }
    }
-
    // Einfache AlertDialog-Box anzeigen
    if (showDialog) {
        vibratePhone(context,100)
        WorkoutAlert(title = "Speichern erfolgreich", message = "Das tägliche Ziel wurde erfolgreich gespeichert", onDismiss = { showDialog = false })
    }
-
-   // Dialog für das Erreichen des Ziels
-  /* if (showGoalAchievedDialog) {
-       vibratePhone(context,400)
-       WorkoutAlert(title = "Ziel erreicht!", message = "Herzlichen Glückwunsch! Du hast dein tägliches Ziel von $dailyGoal Push-Ups erreicht.", onDismiss = { showGoalAchievedDialog = false })
-   }
-*/
    // Dialog für das Erreichen des Ziels
    if (showCalibratedDialog) {
        vibratePhone(context,100)
        WorkoutAlert(title = "Erfolgreich kalibriert!", message = "Kalibrierung wurde erfolgreich zurückgesetzt.", onDismiss = { showCalibratedDialog = false })
    }
-
-    editRecord?.let { record ->
-        EditPushUpDialog(
+   editRecord?.let { record ->
+        EditCounterWorkoutDialog(
             record = record,
             onDismiss = { editRecord = null },
             onConfirm = { newCount ->
@@ -872,10 +778,9 @@ fun CounterScreen(workoutType: WorkoutType) {
                 editRecord = null
             }
         )
-    }
-
-    deleteRecord?.let { record ->
-        DeletePushUpDialog(
+   }
+   deleteRecord?.let { record ->
+        DeleteCounterWorkoutDialog(
             record = record,
             onDismiss = { deleteRecord = null },
             onConfirm = {
@@ -883,5 +788,5 @@ fun CounterScreen(workoutType: WorkoutType) {
                 deleteRecord = null
             }
         )
-    }
+   }
 }
