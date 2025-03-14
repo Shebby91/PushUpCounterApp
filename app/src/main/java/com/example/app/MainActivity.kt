@@ -137,7 +137,7 @@ class PushUpSensorListener(context: Context, private val onPushUpDetected: () ->
 }
 
 @SuppressLint("StaticFieldLeak")
-class PlankViewModel(private val context: Context) : ViewModel() {
+class WorkoutTimerViewModel(private val context: Context, val workoutType: WorkoutType) : ViewModel() {
     var minutes by mutableIntStateOf(0)
     var seconds by mutableIntStateOf(30) // Standardzeit 30 Sekunden
     var goalSets by mutableIntStateOf(3)
@@ -145,13 +145,11 @@ class PlankViewModel(private val context: Context) : ViewModel() {
     var isRunning by mutableStateOf(false)
     var history by mutableStateOf<List<WorkoutRecord>>(WorkoutHistoryRepository.loadHistory(context))
     var progress by mutableFloatStateOf(0f)
-    var remainingTimeText by mutableStateOf("")  // Neuer Observable-Status für die verbleibende Zeit
+    var remainingTimeText by mutableStateOf("")
     private var timer: CountDownTimer? = null
 
-    private val sharedPreferences = context.getSharedPreferences("plank_prefs", Context.MODE_PRIVATE)
-
     init {
-        loadTargetTime() // Laden der gespeicherten Zielzeit
+        loadTargetTime()
     }
 
     fun startTimer() {
@@ -162,34 +160,16 @@ class PlankViewModel(private val context: Context) : ViewModel() {
         progress = 0f
         remainingTimeText = formatTime(remainingTime)
 
-        // Timer starten
         timer = object : CountDownTimer(totalMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 remainingTime = millisUntilFinished.toInt()
-                remainingTimeText = formatTime(remainingTime) // Update der verbleibenden Zeit
+                remainingTimeText = formatTime(remainingTime)
                 progress = (1 - millisUntilFinished.toFloat() / totalMillis)
             }
 
             override fun onFinish() {
                 isRunning = false
-                val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-
-                // Dauer in Millisekunden berechnen
-                val totalMilliseconds = (minutes * 60 + seconds) * 1000
-
-                // Erstelle oder aktualisiere das WorkoutRecord
-                val record = WorkoutRecord(
-                    date = date,
-                    type = WorkoutType.PLANK,
-                    durationMillis = totalMilliseconds,
-                    sets = 1 // initial 1 set
-                )
-
-                // Versuche, den bestehenden Eintrag zu finden und zu aktualisieren
-                WorkoutHistoryRepository.addOrUpdateRecord(context, record)
-
-                // Lade die aktualisierte Historie
-                history = WorkoutHistoryRepository.loadHistory(context)
+                saveWorkoutRecord()
             }
         }.start()
     }
@@ -206,31 +186,44 @@ class PlankViewModel(private val context: Context) : ViewModel() {
         return String.format("%02d:%02d", minutes, seconds)
     }
 
-    // Zielzeit speichern über das gemeinsame Repository
-    fun saveTargetTime() {
-        WorkoutSettingsRepository.savePlankTargetTime(context, minutes, seconds, goalSets)
+    private fun saveWorkoutRecord() {
+        val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
+        val totalMilliseconds = (minutes * 60 + seconds) * 1000
+
+        val record = WorkoutRecord(
+            date = date,
+            type = workoutType,
+            durationMillis = totalMilliseconds,
+            sets = 1
+        )
+
+        WorkoutHistoryRepository.addOrUpdateRecord(context, record)
+        history = WorkoutHistoryRepository.loadHistory(context)
     }
 
-    // Zielzeit laden aus dem gemeinsamen Repository
+    fun saveTargetTime() {
+        WorkoutSettingsRepository.saveTargetTime(context, workoutType, minutes, seconds, goalSets)
+    }
+
     private fun loadTargetTime() {
-        val (min, sec, sets) = WorkoutSettingsRepository.getPlankTargetTime(context)
+        val (min, sec, sets) = WorkoutSettingsRepository.getTargetTime(context, workoutType)
         minutes = min
         seconds = sec
         goalSets = sets
     }
 
-    // Update-Funktion für einen Eintrag in der History
     fun updateRecord(updatedRecord: WorkoutRecord, originalRecord: WorkoutRecord) {
-        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+        val currentHistory = history.toMutableList()
         val index = currentHistory.indexOf(originalRecord)
-        if(index != -1) {
+        if (index != -1) {
             currentHistory[index] = updatedRecord
             WorkoutHistoryRepository.saveHistory(context, currentHistory)
             history = currentHistory
         }
     }
+
     fun deleteRecord(record: WorkoutRecord) {
-        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+        val currentHistory = history.toMutableList()
         currentHistory.remove(record)
         WorkoutHistoryRepository.saveHistory(context, currentHistory)
         history = currentHistory
@@ -275,7 +268,9 @@ fun AppNavigation() {
         composable("burpees") { CounterScreen(WorkoutType.BURPEES) }
         composable("legraises") { CounterScreen(WorkoutType.LEG_RAISES) }
         composable("trizepsdips") { CounterScreen(WorkoutType.TRIZEPS_DIPS) }
-        composable("plank") { PlankScreen(PlankViewModel(context)) }
+        composable("planks") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.PLANK)) }
+        composable("climber") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.MOUNTAIN_CLIMBER)) }
+        //composable("overview") {  }
     }
 }
 
@@ -314,7 +309,7 @@ fun StartScreen(navController: NavController) {
                 }
 
                 Button(
-                    onClick = { navController.navigate("plank") },
+                    onClick = { navController.navigate("planks") },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
@@ -336,11 +331,11 @@ fun StartScreen(navController: NavController) {
                     Text("Squats", color = MaterialTheme.colorScheme.onPrimary)
                 }
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = { navController.navigate("climber") },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("4", color = MaterialTheme.colorScheme.onPrimary)
+                    Text("MountainClimber", color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
 
@@ -423,7 +418,7 @@ fun StartScreen(navController: NavController) {
                     Text("Crunches", color = MaterialTheme.colorScheme.onPrimary)
                 }
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = { /*navController.navigate("overview")*/ },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
@@ -436,11 +431,12 @@ fun StartScreen(navController: NavController) {
 }
 
 @Composable
-fun PlankScreen(viewModel: PlankViewModel) {
+fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
     var showDialog by remember { mutableStateOf(false) }
-    val filteredHistory = viewModel.history.filter { it.type == WorkoutType.PLANK}
+    val filteredHistory = viewModel.history.filter { it.type == viewModel.workoutType }
     var editRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
     var deleteRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -448,6 +444,8 @@ fun PlankScreen(viewModel: PlankViewModel) {
             .padding(horizontal = 16.dp, vertical = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        //Text(text = "${viewModel.workoutType.name} Timer", style = MaterialTheme.typography.headlineLarge)
+
         Row {
             TextField(
                 value = viewModel.minutes.toString(),
@@ -481,12 +479,10 @@ fun PlankScreen(viewModel: PlankViewModel) {
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
+            Text(text = "Ziel speichern")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        //Text("Plank Verlauf:",color = MaterialTheme.colorScheme.onPrimary , style = MaterialTheme.typography.headlineLarge)
 
         LazyColumn(
             modifier = Modifier
@@ -494,79 +490,70 @@ fun PlankScreen(viewModel: PlankViewModel) {
                 .fillMaxWidth(),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-
             items(filteredHistory) { record ->
-                WorkoutHistoryItem(
-                    record = record,
-                    onEdit = { editRecord = record },
-                    onDelete = {  deleteRecord = record }
-                )
+                WorkoutHistoryItem(record = record, onEdit = { editRecord = record }, onDelete = { deleteRecord = record })
             }
         }
+
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Anzeige der verbleibenden Zeit
         Text(text = viewModel.remainingTimeText, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(24.dp))
-        // Button zum Starten des Timers
+
         Button(
-            onClick = {
-                viewModel.startTimer()
-            },
+            onClick = { viewModel.startTimer() },
             enabled = !viewModel.isRunning,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-        ) {
-            Text(text = "Plank starten", color = MaterialTheme.colorScheme.onPrimary)
+        ) /*{
+            Text(text = "${viewModel.workoutType.name} starten")
+        }*/
+        {
+            Text(
+                text = when (viewModel.workoutType.name) {
+                    WorkoutType.PLANK.toString() -> "Plank starten"
+                    WorkoutType.MOUNTAIN_CLIMBER.toString() -> "Mountain-Climber starten"
+                    else -> {"Wiederholung hinzufügen"}
+                },
+                color = MaterialTheme.colorScheme.onPrimary
+            )
         }
+
         Spacer(modifier = Modifier.height(24.dp))
-        // Button zum Stoppen des Timers
+
         Button(
-            onClick = {
-                viewModel.stopTimer()
-            },
+            onClick = { viewModel.stopTimer() },
             enabled = viewModel.isRunning,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
         ) {
-            Text(text = "Stop", color = MaterialTheme.colorScheme.onSecondary)
+            Text(text = "Stop")
         }
     }
 
-    if (showDialog){
-        WorkoutAlert(title = "Speichern erfolgreich", message = "Das tägliche Ziel wurde erfolgreich gespeichert", onDismiss = { showDialog = false})
+    if (showDialog) {
+        WorkoutAlert(
+            title = "Speichern erfolgreich",
+            message = "Das tägliche Ziel wurde erfolgreich gespeichert",
+            onDismiss = { showDialog = false }
+        )
     }
 
-    // Bearbeitungsdialog für Plank-Einträge
     editRecord?.let { record ->
-        EditPlankDialog(
-            record = record,
-            onDismiss = { editRecord = null },
-            onConfirm = { newMinutes, newSeconds ->
-                val newDuration = (newMinutes * 60 + newSeconds) * 1000
-                val updated = record.copy(durationMillis = newDuration)
-                viewModel.updateRecord(updated, record)
-                editRecord = null
-            }
-        )
+        EditWorkoutDialog(record = record, onDismiss = { editRecord = null }) { newMinutes, newSeconds ->
+            val newDuration = (newMinutes * 60 + newSeconds) * 1000
+            val updated = record.copy(durationMillis = newDuration)
+            viewModel.updateRecord(updated, record)
+            editRecord = null
+        }
     }
 
     deleteRecord?.let { record ->
-        DeletePlankDialog(
-            record = record,
-            onDismiss = { deleteRecord = null },
-            onConfirm = {
-                viewModel.deleteRecord(record)
-                deleteRecord = null
-            }
-        )
+        DeleteWorkoutDialog(record = record, onDismiss = { deleteRecord = null }) {
+            viewModel.deleteRecord(record)
+            deleteRecord = null
+        }
     }
-
-
 }
 
 @Composable
@@ -630,7 +617,17 @@ fun CounterScreen(workoutType: WorkoutType) {
             }
             WorkoutType.PLANK -> {
                 // Hier kannst du die Darstellung für Planks anpassen
-                val (minutes, seconds, savedSets) = WorkoutSettingsRepository.getPlankTargetTime(context)
+                val (minutes, seconds, savedSets) = WorkoutSettingsRepository.getTargetTime(context,
+                    WorkoutType.PLANK
+                )
+                reps = minutes.toString()  // Beispiel: Minuten als 'Reps'
+                sets = seconds.toString()  // Beispiel: Sekunden als 'Sätze'
+            }
+            WorkoutType.MOUNTAIN_CLIMBER -> {
+                // Hier kannst du die Darstellung für Planks anpassen
+                val (minutes, seconds, savedSets) = WorkoutSettingsRepository.getTargetTime(context,
+                    WorkoutType.MOUNTAIN_CLIMBER
+                )
                 reps = minutes.toString()  // Beispiel: Minuten als 'Reps'
                 sets = seconds.toString()  // Beispiel: Sekunden als 'Sätze'
             }
@@ -736,7 +733,8 @@ fun CounterScreen(workoutType: WorkoutType) {
                    WorkoutType.BURPEES -> WorkoutSettingsRepository.saveBurpeesGoal(context, repsInt, setsInt)
                    WorkoutType.LEG_RAISES -> WorkoutSettingsRepository.saveLegRaisesGoal(context, repsInt, setsInt)
                    WorkoutType.TRIZEPS_DIPS -> WorkoutSettingsRepository.saveTrizepsDipsGoal(context, repsInt, setsInt)
-                   WorkoutType.PLANK -> WorkoutSettingsRepository.savePlankTargetTime(context, repsInt, setsInt, setsInt) // Anpassen, falls nötig
+                   WorkoutType.PLANK -> WorkoutSettingsRepository.saveTargetTime(context, WorkoutType.PLANK,repsInt, setsInt, setsInt)
+                   WorkoutType.MOUNTAIN_CLIMBER -> WorkoutSettingsRepository.saveTargetTime(context, WorkoutType.PLANK,repsInt, setsInt, setsInt) // Anpassen, falls nötig
                }
                showDialog = true
            },
@@ -806,6 +804,7 @@ fun CounterScreen(workoutType: WorkoutType) {
                        WorkoutType.LEG_RAISES -> "Beinheben hinzufügen"
                        WorkoutType.TRIZEPS_DIPS -> "Dips hinzufügen"
                        WorkoutType.PLANK -> "Plank hinzufügen"
+                       WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber hinzufügen"
                    },
                    color = MaterialTheme.colorScheme.onPrimary
                )

@@ -24,7 +24,6 @@ object WorkoutHistoryRepository {
         sharedPreferences.edit().putString(KEY_HISTORY, json).apply()
     }
 
-    // Methode, um einen bestehenden Eintrag zu aktualisieren
     fun updateRecord(context: Context, updatedRecord: WorkoutRecord) {
         val currentHistory = loadHistory(context).toMutableList()
         val index = currentHistory.indexOfFirst {
@@ -38,7 +37,6 @@ object WorkoutHistoryRepository {
         }
     }
 
-    // Methode, um ein neues Workout hinzuzufügen oder ein bestehendes zu aktualisieren
     fun addOrUpdateRecord(context: Context, newRecord: WorkoutRecord) {
         val currentHistory = loadHistory(context).toMutableList()
         val existingRecord = currentHistory.find {
@@ -46,7 +44,6 @@ object WorkoutHistoryRepository {
                     it.type == newRecord.type &&
                     it.durationMillis == newRecord.durationMillis
         }
-
         if (existingRecord != null) {
             val updatedRecord = existingRecord.copy(sets = existingRecord.sets?.plus(1))
             updateRecord(context, updatedRecord)

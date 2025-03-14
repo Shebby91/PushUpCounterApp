@@ -9,15 +9,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 
 @Composable
-fun WorkoutAlert(
-    title: String,
-    message: String,
-    onDismiss: () -> Unit
-) {
+fun WorkoutAlert(title: String, message: String, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title,color = MaterialTheme.colorScheme.onTertiary) },
-        text = { Text(message,color = MaterialTheme.colorScheme.onTertiary) },
+        title = { Text(text = title) },
+        text = { Text(text = message) },
         confirmButton = {
             Button(onClick = onDismiss) {
                 Text("OK")

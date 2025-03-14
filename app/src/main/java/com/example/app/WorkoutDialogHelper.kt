@@ -93,43 +93,43 @@ fun EditPushUpDialog(
     )
 }
 
+
 @Composable
-fun EditPlankDialog(
+fun EditWorkoutDialog(
     record: WorkoutRecord,
     onDismiss: () -> Unit,
     onConfirm: (newMinutes: Int, newSeconds: Int) -> Unit
 ) {
-    // Berechnung der Ausgangswerte aus durationMillis
-    val initialMinutes = (record.durationMillis ?: 0) / 60000
-    val initialSeconds = ((record.durationMillis ?: 0) % 60000) / 1000
-    var minutesText by remember { mutableStateOf(initialMinutes.toString()) }
-    var secondsText by remember { mutableStateOf(initialSeconds.toString()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Eintrag bearbeiten",color = MaterialTheme.colorScheme.onTertiary) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = minutesText,
-                    onValueChange = { minutesText = it },
-                    label = { Text("Minuten",color = MaterialTheme.colorScheme.onTertiary) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                OutlinedTextField(
-                    value = secondsText,
-                    onValueChange = { secondsText = it },
-                    label = { Text("Sekunden",color = MaterialTheme.colorScheme.onTertiary) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+        title = { Text("Eintrag bearbeiten") },
+        text = { Text("Hier kannst du die Werte bearbeiten (nicht vollständig implementiert).") },
+        confirmButton = {
+            Button(onClick = { onConfirm(0, 0) }) {
+                Text("Speichern")
             }
         },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Abbrechen")
+            }
+        }
+    )
+}
+
+@Composable
+fun DeleteWorkoutDialog(
+    record: WorkoutRecord,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Eintrag löschen") },
+        text = { Text("Möchtest du diesen Eintrag wirklich löschen?") },
         confirmButton = {
-            Button(onClick = {
-                val newMinutes = minutesText.toIntOrNull() ?: initialMinutes
-                val newSeconds = secondsText.toIntOrNull() ?: initialSeconds
-                onConfirm(newMinutes, newSeconds)
-            }) {
-                Text("Speichern")
+            Button(onClick = onConfirm) {
+                Text("Löschen")
             }
         },
         dismissButton = {

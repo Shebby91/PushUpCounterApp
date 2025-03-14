@@ -32,10 +32,8 @@ fun WorkoutHistoryItem(
         WorkoutType.BURPEES-> "${record.count ?: 0} Burpees"
         WorkoutType.LEG_RAISES-> "${record.count ?: 0} Beinheben"
         WorkoutType.TRIZEPS_DIPS-> "${record.count ?: 0} Dips"
-        WorkoutType.PLANK -> {
-            val (targetMinutes, targetSeconds, _) = WorkoutSettingsRepository.getPlankTargetTime(context)
-            "$targetMinutes m $targetSeconds s Plank"
-        }
+        WorkoutType.PLANK -> "Dauer: ${record.durationMillis?.div(1000) ?: 0} Sek."
+        WorkoutType.MOUNTAIN_CLIMBER -> "Dauer: ${record.durationMillis?.div(1000) ?: 0} Sek."
     }
 
     // Errechne Ziel und erreichte Sätze abhängig vom Typ
@@ -103,10 +101,8 @@ fun WorkoutHistoryItem(
             val setsDone = (completedDips / goalReps).coerceAtMost(goalSets)
             Pair(goalSets, setsDone)
         }
-        WorkoutType.PLANK -> {
-            // Für Planks holen wir das Ziel aus dem Triple
-            val (_, _, targetSets) = WorkoutSettingsRepository.getPlankTargetTime(context)
-            // Hier nehmen wir an, dass record.sets die Anzahl der abgeschlossenen Plank-Sätze enthält
+        WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> {
+            val (_, _, targetSets) = WorkoutSettingsRepository.getTargetTime(context, record.type)
             val setsDone = record.sets ?: 0
             Pair(targetSets, setsDone)
         }
@@ -114,7 +110,7 @@ fun WorkoutHistoryItem(
     }
 
     // Erstelle Checkmarks: Für jedes Ziel-Set ein Icon, das grün wird, wenn der Satz erledigt wurde, sonst grau
-    val checkmarks = List(totalSets) { index -> index < completedSets }
+    val checkmarks = if (totalSets > 0) List(totalSets) { index -> index < completedSets } else emptyList()
 
     Card(
         modifier = Modifier
@@ -134,21 +130,21 @@ fun WorkoutHistoryItem(
                 Text(text = record.date, style = MaterialTheme.typography.bodyLarge)
                 Text(text = detailsText, style = MaterialTheme.typography.bodyMedium)
             }
-
-            // Zweite Spalte: Checkmarks und Text
-            Column(modifier = Modifier.weight(1f)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    checkmarks.forEach { isCompleted ->
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Häkchen",
-                            tint = if (isCompleted) MaterialTheme.colorScheme.tertiary else Color.Gray
-                        )
+            // Zweite Spalte: Checkmarks (nur bei timer-basierten Workouts)
+            if (checkmarks.isNotEmpty()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        checkmarks.forEach { isCompleted ->
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Häkchen",
+                                tint = if (isCompleted) MaterialTheme.colorScheme.tertiary else Color.Gray
+                            )
+                        }
                     }
+                    Text(text = "Sätze: $completedSets / $totalSets")
                 }
-                Text(text = "Sätze: $completedSets / $totalSets")
             }
-
             // Dritte Spalte: Optionen (Edit / Delete)
             Column(modifier = Modifier.weight(1f)) {
                 Row(horizontalArrangement = Arrangement.End) {

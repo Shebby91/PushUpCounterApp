@@ -3,6 +3,7 @@ package com.example.app
 enum class WorkoutType {
     PUSH_UP,
     PLANK,
+    MOUNTAIN_CLIMBER,
     SQUAT,
     LUNGE,
     ROWING,
