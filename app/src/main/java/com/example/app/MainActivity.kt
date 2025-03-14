@@ -240,22 +240,21 @@ fun StartScreen(navController: NavController) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 32.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Text(text = "Welcome back, Sebastian!", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
             // App-Logo
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "App Logo",
-                modifier = Modifier.size(250.dp)
+                modifier = Modifier.size(220.dp)
             )
-            Text(text = "Welcome back!", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
-            Text(text = "Sebastian", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(24.dp))
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(),
