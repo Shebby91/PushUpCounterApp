@@ -250,7 +250,7 @@ fun StartScreen(navController: NavController) {
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         // Festes Logo oben
         Image(
             painter = painterResource(id = R.drawable.logo_cropped),
@@ -296,7 +296,7 @@ fun StartScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "©2025 Sebastian Grauthoff",
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp, bottom = 30.dp)
         )
@@ -757,7 +757,7 @@ fun DailyOverviewScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp, vertical = 64.dp),
+            .padding(horizontal = 0.dp, vertical = 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
