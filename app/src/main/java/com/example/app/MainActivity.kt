@@ -35,12 +35,19 @@ import java.util.*
 import kotlin.math.abs
 import androidx.compose.foundation.Image
 import android.os.CountDownTimer
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.ViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
         setContent {
             DarkTheme {
@@ -121,7 +128,7 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
     var goalSets by mutableIntStateOf(3)
     var remainingTime by mutableIntStateOf(0)
     var isRunning by mutableStateOf(false)
-    var history by mutableStateOf<List<WorkoutRecord>>(WorkoutHistoryRepository.loadHistory(context))
+    var history by mutableStateOf(WorkoutHistoryRepository.loadHistory(context))
     var progress by mutableFloatStateOf(0f)
     var remainingTimeText by mutableStateOf("")
     private var timer: CountDownTimer? = null
@@ -236,165 +243,111 @@ fun AppNavigation() {
 }
 @Composable
 fun StartScreen(navController: NavController) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp, vertical = 14.dp),
-        contentAlignment = Alignment.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(text = "Welcome back, Sebastian!", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
-            // App-Logo
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "App Logo",
-                modifier = Modifier.size(220.dp)
-            )
+        Spacer(modifier = Modifier.height(28.dp))
+        // Festes Logo oben
+        Image(
+            painter = painterResource(id = R.drawable.logo_cropped),
+            contentDescription = "App Logo",
+            modifier = Modifier.size(140.dp)
+        )
+        Text(
+            text = "Welcome back, Sebastian!",
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+        )
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = "Day: 1, 3, 5", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-                Text(text = "Day: 2, 4",modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-            }
-            // Erste Reihe mit zwei Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = { navController.navigate("squat") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Squats", color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Button(
-                    onClick = { navController.navigate("burpees") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Burpees", color = MaterialTheme.colorScheme.onPrimary)
-                }
 
-            }
-            // Zweite Reihe mit zwei Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+        // Scrollbarer Bereich mit Übungen
+        Box(modifier = Modifier.weight(1f)) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.fillMaxSize()
             ) {
-                Button(
-                    onClick = { navController.navigate("lunge") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Lunges", color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Button(
-                    onClick = { navController.navigate("climber") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("MountainClimber", color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
-            // Dritte Reihe mit zwei Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = { navController.navigate("pushups") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Push-Ups", color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Button(
-                    onClick = { navController.navigate("planks") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Planks", color = MaterialTheme.colorScheme.onPrimary)
-                }
+                val exercises = listOf(
+                    "Kniebeuge" to "squat",
+                    "Burpees" to "burpees",
+                    "Ausfallschritte" to "lunge",
+                    "Mountain-Climber" to "climber",
+                    "Push-Ups" to "pushups",
+                    "Planks" to "planks",
+                    "Schulterpresse" to "shoulderpress",
+                    "Beinheben" to "legraises",
+                    "Rudern" to "rowing",
+                    "Triceps-Dips" to "trizepsdips",
+                    "Crunches" to "crunches",
+                    "Daily Goals" to "overview"
+                )
 
-            }
-            //Vierte Reihe mit zwei Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = { navController.navigate("shoulderpress") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Shoulder Press", color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Button(
-                    onClick = { navController.navigate("legraises") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Leg Raises", color = MaterialTheme.colorScheme.onPrimary)
+                items(exercises) { (title, route) ->
+                    ExerciseTile(navController = navController, label = title, route = route, )
                 }
             }
-            //Fünfte Reihe mit zwei Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = { navController.navigate("rowing") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Rowing", color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Button(
-                    onClick = { navController.navigate("trizepsdips") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Trizeps-Dips", color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
-            //Fünfte Reihe mit zwei Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = { navController.navigate("crunches") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Crunches", color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Button(
-                    onClick = { navController.navigate("overview") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text("Daily Goals", color = MaterialTheme.colorScheme.onSecondary)
-                }
-            }
-
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "©2025 Sebastian Grauthoff",
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp, bottom = 30.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+@Composable
+fun ExerciseTile(navController: NavController, label: String, route: String) {
+    val imageId = when (route) {
+        "squat" -> R.drawable.squats
+        "burpees" -> R.drawable.burpees
+        "lunge" -> R.drawable.lunges
+        "climber" -> R.drawable.mountainclimber
+        "pushups" -> R.drawable.pushups
+        "planks" -> R.drawable.planks
+        "shoulderpress" -> R.drawable.shoulderpress
+        "legraises" -> R.drawable.legraises
+        "rowing" -> R.drawable.rowing
+        "trizepsdips" -> R.drawable.trizepsdips
+        "crunches" -> R.drawable.crunches
+        "overview" -> R.drawable.logo
+        else -> R.drawable.logo
+    }
+
+    Column(
+        modifier = Modifier
+            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
+            .clickable { navController.navigate(route) }
+            .padding(12.dp)
+            .aspectRatio(1f),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = imageId),
+            contentDescription = null,
+            modifier = Modifier.size(115.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+
 @Composable
 fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
     var showDialog by remember { mutableStateOf(false) }
@@ -564,19 +517,19 @@ fun CounterScreen(workoutType: WorkoutType) {
             }
             WorkoutType.PLANK -> {
                 // Hier kannst du die Darstellung für Planks anpassen
-                val (minutes, seconds, savedSets) = WorkoutSettingsRepository.getTargetTime(context,
+                val (minutes, seconds) = WorkoutSettingsRepository.getTargetTime(context,
                     WorkoutType.PLANK
                 )
-                reps = minutes.toString()  // Beispiel: Minuten als 'Reps'
-                sets = seconds.toString()  // Beispiel: Sekunden als 'Sätze'
+                reps = minutes.toString()
+                sets = seconds.toString()
             }
             WorkoutType.MOUNTAIN_CLIMBER -> {
                 // Hier kannst du die Darstellung für Planks anpassen
-                val (minutes, seconds, savedSets) = WorkoutSettingsRepository.getTargetTime(context,
+                val (minutes, seconds) = WorkoutSettingsRepository.getTargetTime(context,
                     WorkoutType.MOUNTAIN_CLIMBER
                 )
-                reps = minutes.toString()  // Beispiel: Minuten als 'Reps'
-                sets = seconds.toString()  // Beispiel: Sekunden als 'Sätze'
+                reps = minutes.toString()
+                sets = seconds.toString()
             }
         }
     }
@@ -807,10 +760,9 @@ fun DailyOverviewScreen() {
             .padding(horizontal = 16.dp, vertical = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "Daily Goals",
-            color = MaterialTheme.colorScheme.onPrimary,
+            color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.headlineLarge
         )
         Spacer(modifier = Modifier.height(6.dp))
@@ -828,7 +780,7 @@ fun DailyOverviewScreen() {
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = date, color = MaterialTheme.colorScheme.onSecondary)
+                            Text(text = date, color = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(8.dp))
                             // Gruppiere für den jeweiligen Tag die Records nach Workout-Typ
                             val recordsByType = recordsForDate.groupBy { it.type }
@@ -897,7 +849,6 @@ fun DailyOverviewScreen() {
                                         val totalSets = recordsOfType.sumOf { it.sets ?: 0 }
                                         Pair(target, totalSets)
                                     }
-                                    else -> Pair(0, 0)
                                 }
 
                                 val goalReached = achievedSets >= targetSets
@@ -911,7 +862,20 @@ fun DailyOverviewScreen() {
 
                                 ) {
                                     Text(
-                                        text = type.name,
+                                        //text = type.name,
+                                        text = when (type) {
+                                            WorkoutType.PUSH_UP -> "Push‑Ups"
+                                            WorkoutType.SQUAT -> "Kniebeugen"
+                                            WorkoutType.LUNGE -> "Ausfallschritte"
+                                            WorkoutType.ROWING -> "Rudern"
+                                            WorkoutType.CRUNCHES -> "Crunches"
+                                            WorkoutType.SHOULDER_PRESS -> "Schulterpresse"
+                                            WorkoutType.BURPEES -> "Burpees"
+                                            WorkoutType.LEG_RAISES -> "Beinheben"
+                                            WorkoutType.TRIZEPS_DIPS -> "Trizeps-Dips"
+                                            WorkoutType.PLANK -> "Planks"
+                                            WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber"
+                                        },
                                         modifier = Modifier.weight(1f),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
