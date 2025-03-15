@@ -1,6 +1,7 @@
 package com.example.app
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
@@ -9,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -114,45 +116,59 @@ fun WorkoutHistoryItem(
 
     Card(
         modifier = Modifier
+            .shadow(10.dp, shape = RoundedCornerShape(8.dp))
             .fillMaxWidth()
             .padding(8.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EAF6))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween  // Sorgt für gleichmäßige Verteilung
         ) {
             // Erste Spalte: Datum und Details
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = record.date, style = MaterialTheme.typography.bodyLarge)
-                Text(text = detailsText, style = MaterialTheme.typography.bodyMedium)
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start // Links ausrichten
+            ) {
+                Text(text = record.date, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                Text(text = detailsText, color = MaterialTheme.colorScheme.surface)
+
             }
-            // Zweite Spalte: Checkmarks (nur bei timer-basierten Workouts)
+
+            // Zweite Spalte: Checkmarks (falls vorhanden)
             if (checkmarks.isNotEmpty()) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    modifier = Modifier.padding(start = 10.dp).weight(1f),
+                    horizontalAlignment = Alignment.Start // Zentrieren
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
                         checkmarks.forEach { isCompleted ->
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Häkchen",
-                                tint = if (isCompleted) MaterialTheme.colorScheme.tertiary else Color.Gray
+                                tint = if (isCompleted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
                             )
                         }
                     }
-                    Text(text = "Sätze: $completedSets / $totalSets")
+
+                    Text(text = "Sätze: $completedSets / $totalSets", color = MaterialTheme.colorScheme.surface)
                 }
             }
+
             // Dritte Spalte: Optionen (Edit / Delete)
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.End // Rechts ausrichten
+            ) {
                 Row(horizontalArrangement = Arrangement.End) {
-                    IconButton(onClick = onDelete, modifier = Modifier.padding(0.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Löschen", tint = Color.Red)
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "Löschen", tint = MaterialTheme.colorScheme.background)
                     }
-                    IconButton(onClick = onEdit, modifier = Modifier.padding(0.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = "Bearbeiten", tint = Color.Blue)
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Bearbeiten", tint = MaterialTheme.colorScheme.background)
                     }
                 }
             }

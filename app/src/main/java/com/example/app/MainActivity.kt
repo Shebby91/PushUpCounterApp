@@ -6,6 +6,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -35,14 +36,25 @@ import java.util.*
 import kotlin.math.abs
 import androidx.compose.foundation.Image
 import android.os.CountDownTimer
+import android.os.Environment
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.ViewModel
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -239,10 +251,29 @@ fun AppNavigation() {
         composable("planks") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.PLANK)) }
         composable("climber") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.MOUNTAIN_CLIMBER)) }
         composable("overview") { DailyOverviewScreen() }
+        composable("dataTransfer") { DataTransferScreen(navController) }
     }
 }
 @Composable
 fun StartScreen(navController: NavController) {
+    val context = LocalContext.current
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.bufferedReader().use { reader ->
+                    val json = reader?.readText() ?: ""
+                    importWorkoutHistory(context, json)
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Fehler beim Import: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -255,7 +286,7 @@ fun StartScreen(navController: NavController) {
         Image(
             painter = painterResource(id = R.drawable.logo_cropped),
             contentDescription = "App Logo",
-            modifier = Modifier.size(140.dp)
+            modifier = Modifier.size(90.dp)
         )
         Text(
             text = "Welcome back, Sebastian!",
@@ -266,7 +297,8 @@ fun StartScreen(navController: NavController) {
 
 
         // Scrollbarer Bereich mit Übungen
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier
+            .weight(1f)) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -285,14 +317,25 @@ fun StartScreen(navController: NavController) {
                     "Rudern" to "rowing",
                     "Triceps-Dips" to "trizepsdips",
                     "Crunches" to "crunches",
+                )
+                val goals = listOf(
                     "Daily Goals" to "overview"
                 )
-
                 items(exercises) { (title, route) ->
                     ExerciseTile(navController = navController, label = title, route = route, )
                 }
+                items(goals) { (title, route) ->
+                    GoalTile(navController = navController, label = title, route = route, )
+                }
+                item {
+                    ActionTile(label = "Workout importieren", type = "import", onClick = { importLauncher.launch(arrayOf("application/json")) })
+                }
+                item {
+                    ActionTile(label = "Workout exportieren", type = "export", onClick = { exportWorkoutHistory(context) })
+                }
             }
         }
+
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "©2025 Sebastian Grauthoff",
@@ -324,9 +367,44 @@ fun ExerciseTile(navController: NavController, label: String, route: String) {
 
     Column(
         modifier = Modifier
+            .shadow(10.dp, shape = RoundedCornerShape(8.dp))
             .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
             .clickable { navController.navigate(route) }
+            .padding(12.dp)
+            .aspectRatio(1f),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = imageId),
+            contentDescription = null,
+            modifier = Modifier.size(120.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.surface,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun ActionTile(label: String, type: String, onClick: () -> Unit) {
+    val (imageId, borderColor) = when (type) {
+        "export" -> R.drawable.export to MaterialTheme.colorScheme.onBackground
+        "import" -> R.drawable.sync to MaterialTheme.colorScheme.onBackground
+        else -> R.drawable.logo to Color.Gray
+    }
+
+    Column(
+        modifier = Modifier
+            .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
+            .clickable { onClick() }
             .padding(12.dp)
             .aspectRatio(1f),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -340,18 +418,46 @@ fun ExerciseTile(navController: NavController, label: String, route: String) {
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.surface,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center
         )
     }
 }
 
+@Composable
+fun GoalTile(navController: NavController, label: String, route: String) {
+
+    Column(
+        modifier = Modifier
+            .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+            .border(2.dp, MaterialTheme.colorScheme.onBackground, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
+            .clickable { navController.navigate(route) }
+            .padding(12.dp)
+            .aspectRatio(1f),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.goals),
+            contentDescription = null,
+            modifier = Modifier.size(125.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.surface,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+    }
+}
 
 @Composable
 fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
     var showDialog by remember { mutableStateOf(false) }
-    val filteredHistory = viewModel.history.filter { it.type == viewModel.workoutType }
+    val filteredHistory = viewModel.history.filter { it.type == viewModel.workoutType }.reversed()
     var editRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
     var deleteRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
 
@@ -390,12 +496,21 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
                 viewModel.saveTargetTime()
                 showDialog = true
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.shadow(10.dp, shape = RoundedCornerShape(8.dp)).fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text(text = "Ziel speichern")
         }
         Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = when (viewModel.workoutType.name) {
+                WorkoutType.PLANK.toString() -> "Plank Verlauf"
+                WorkoutType.MOUNTAIN_CLIMBER.toString() -> "Mountain-Climber Verlauf"
+                else -> {""}
+            },
+            color = MaterialTheme.colorScheme.surface,
+            style = MaterialTheme.typography.headlineMedium
+        )
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -576,7 +691,7 @@ fun CounterScreen(workoutType: WorkoutType) {
    DisposableEffect(Unit) {
        onDispose { sensorListener.unregister() }
    }
-   val filteredHistory = history.filter { it.type == workoutType }
+   val filteredHistory = history.filter { it.type == workoutType }.reversed()
    Column(
        modifier = Modifier
            .fillMaxSize()
@@ -624,12 +739,29 @@ fun CounterScreen(workoutType: WorkoutType) {
                }
                showDialog = true
            },
-           modifier = Modifier.fillMaxWidth(),
+           modifier = Modifier.shadow(10.dp, shape = RoundedCornerShape(8.dp)).fillMaxWidth(),
            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
        ) {
            Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
        }
        Spacer(modifier = Modifier.height(24.dp))
+       Text(
+           text = when (workoutType) {
+               WorkoutType.PUSH_UP -> "Push‑Up Verlauf"
+               WorkoutType.SQUAT -> "Kniebeugen Verlauf"
+               WorkoutType.LUNGE -> "Ausfallschritte Verlauf"
+               WorkoutType.ROWING -> "Rudern Verlauf"
+               WorkoutType.CRUNCHES -> "Crunches Verlauf"
+               WorkoutType.SHOULDER_PRESS -> "Schulterpresse Verlauf"
+               WorkoutType.BURPEES -> "Burpee Verlauf"
+               WorkoutType.LEG_RAISES -> "Beinheben Verlauf"
+               WorkoutType.TRIZEPS_DIPS -> "Trizeps-Dips Verlauf"
+               WorkoutType.PLANK -> "Plank Verlauf"
+               WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber Verlauf"
+           },
+           color = MaterialTheme.colorScheme.surface,
+           style = MaterialTheme.typography.headlineMedium
+       )
        LazyColumn(
            modifier = Modifier
                .weight(1f)
@@ -752,7 +884,7 @@ fun DailyOverviewScreen() {
     // Alle gespeicherten Records laden
     val allRecords = WorkoutHistoryRepository.loadHistory(context)
     // Gruppiere die Records nach Datum (das Datumsformat muss dabei konsistent sein)
-    val recordsByDate = allRecords.groupBy { it.date }
+    val recordsByDate = allRecords.groupBy { it.date }.toSortedMap(Comparator.reverseOrder())
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -762,7 +894,7 @@ fun DailyOverviewScreen() {
     ) {
         Text(
             text = "Daily Goals",
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.surface,
             style = MaterialTheme.typography.headlineLarge
         )
         Spacer(modifier = Modifier.height(6.dp))
@@ -775,6 +907,7 @@ fun DailyOverviewScreen() {
             item {
                 Card(
                     modifier = Modifier
+                        .shadow(10.dp, shape = RoundedCornerShape(8.dp))
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -858,11 +991,16 @@ fun DailyOverviewScreen() {
                                         .fillMaxWidth()
                                         .padding(vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
-
+                                    horizontalArrangement = Arrangement.SpaceBetween // Gleichmäßige Verteilung
                                 ) {
+                                    Icon(
+                                        modifier = Modifier
+                                            .padding(end = 8.dp),
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Star",
+                                        tint = if (goalReached) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
+                                    )
                                     Text(
-                                        //text = type.name,
                                         text = when (type) {
                                             WorkoutType.PUSH_UP -> "Push‑Ups"
                                             WorkoutType.SQUAT -> "Kniebeugen"
@@ -879,26 +1017,92 @@ fun DailyOverviewScreen() {
                                         modifier = Modifier.weight(1f),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
-                                    /*Text(
-                                        text = "$achievedSets / $targetSets",
-                                        modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )*/
+
                                     Text(
                                         text = if (goalReached) "Ziel erreicht" else "Ziel nicht erreicht",
                                         modifier = Modifier.weight(1f),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = if (goalReached)
-                                            MaterialTheme.colorScheme.tertiary
-                                        else
-                                            MaterialTheme.colorScheme.error
+                                        color = if (goalReached) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                                        textAlign = TextAlign.End // Rechts ausrichten für bessere Lesbarkeit
                                     )
+
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+fun exportWorkoutHistory(context: Context) {
+    val history = WorkoutHistoryRepository.loadHistory(context)
+    val json = Gson().toJson(history)
+
+    val fileName = "workout_history_${System.currentTimeMillis()}.json"
+    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+    val file = File(downloadsDir, fileName)
+
+    try {
+        file.writeText(json)
+        Toast.makeText(context, "Export erfolgreich!\nGespeichert unter: ${file.absolutePath}", Toast.LENGTH_LONG).show()
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Toast.makeText(context, "Export fehlgeschlagen: ${e.message}", Toast.LENGTH_LONG).show()
+    }
+}
+
+fun importWorkoutHistory(context: Context, json: String) {
+    try {
+        val type = object : TypeToken<List<WorkoutRecord>>() {}.type
+        val importedHistory: List<WorkoutRecord> = Gson().fromJson(json, type)
+
+        WorkoutHistoryRepository.saveHistory(context, importedHistory)
+        Toast.makeText(context, "Import erfolgreich! ${importedHistory.size} Einträge geladen.", Toast.LENGTH_LONG).show()
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Toast.makeText(context, "Import fehlgeschlagen: ${e.message}", Toast.LENGTH_LONG).show()
+    }
+}
+
+@Composable
+fun DataTransferScreen(navController: NavController) {
+    val context = LocalContext.current
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.bufferedReader().use { reader ->
+                    val json = reader?.readText() ?: ""
+                    importWorkoutHistory(context, json)
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Fehler beim Import: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Button(
+            onClick = { exportWorkoutHistory(context) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Workout-History exportieren")
+        }
+
+        Button(
+            onClick = { importLauncher.launch(arrayOf("application/json")) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Workout-History importieren")
         }
     }
 }
