@@ -290,7 +290,7 @@ fun StartScreen(navController: NavController) {
         )
         Text(
             text = "Welcome back, Sebastian!",
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.surface,
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
         )
