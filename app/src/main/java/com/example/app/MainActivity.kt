@@ -335,7 +335,6 @@ fun StartScreen(navController: NavController) {
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "©2025 Sebastian Grauthoff - App Version 1.0",
