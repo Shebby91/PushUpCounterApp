@@ -338,7 +338,7 @@ fun StartScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "©2025 Sebastian Grauthoff",
+            text = "©2025 Sebastian Grauthoff - App Version 1.0",
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp, bottom = 30.dp)
