@@ -500,7 +500,7 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
         ) {
             Text(text = "Ziel speichern")
         }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = when (viewModel.workoutType.name) {
                 WorkoutType.PLANK.toString() -> "Plank Verlauf"
@@ -510,6 +510,7 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
             color = MaterialTheme.colorScheme.surface,
             style = MaterialTheme.typography.headlineMedium
         )
+        Spacer(modifier = Modifier.height(16.dp))
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -520,8 +521,20 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
                 WorkoutHistoryItem(record = record, onEdit = { editRecord = record }, onDelete = { deleteRecord = record })
             }
         }
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(text = viewModel.remainingTimeText, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        if (viewModel.isRunning) {
+            Text(
+                text = viewModel.remainingTimeText,
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.headlineLarge
+            )
+        } else {
+            Text(
+                text = "00:00",
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.headlineLarge
+            )
+        }
         Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = { viewModel.startTimer() },
@@ -743,7 +756,7 @@ fun CounterScreen(workoutType: WorkoutType) {
        ) {
            Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
        }
-       Spacer(modifier = Modifier.height(24.dp))
+       Spacer(modifier = Modifier.height(16.dp))
        Text(
            text = when (workoutType) {
                WorkoutType.PUSH_UP -> "Push‑Up Verlauf"
@@ -761,6 +774,7 @@ fun CounterScreen(workoutType: WorkoutType) {
            color = MaterialTheme.colorScheme.surface,
            style = MaterialTheme.typography.headlineMedium
        )
+       Spacer(modifier = Modifier.height(16.dp))
        LazyColumn(
            modifier = Modifier
                .weight(1f)
@@ -775,7 +789,7 @@ fun CounterScreen(workoutType: WorkoutType) {
                )
            }
        }
-       Spacer(modifier = Modifier.height(24.dp))
+       Spacer(modifier = Modifier.height(8.dp))
        Text(
            text = "$count",
            color = MaterialTheme.colorScheme.onPrimary,
