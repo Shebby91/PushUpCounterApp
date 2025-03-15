@@ -116,7 +116,7 @@ fun WorkoutHistoryItem(
 
     Card(
         modifier = Modifier
-            .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+            .shadow(4.dp, shape = RoundedCornerShape(14.dp))
             .fillMaxWidth()
             .padding(8.dp),
         elevation = CardDefaults.cardElevation(4.dp),

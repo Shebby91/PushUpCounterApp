@@ -526,16 +526,16 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
             Text(
                 text = viewModel.remainingTimeText,
                 color = MaterialTheme.colorScheme.onPrimary,
-                style = MaterialTheme.typography.headlineLarge
+                style = MaterialTheme.typography.headlineMedium
             )
         } else {
             Text(
                 text = "00:00",
                 color = MaterialTheme.colorScheme.onPrimary,
-                style = MaterialTheme.typography.headlineLarge
+                style = MaterialTheme.typography.headlineMedium
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Button(
             onClick = { viewModel.startTimer() },
             enabled = !viewModel.isRunning,
@@ -793,9 +793,9 @@ fun CounterScreen(workoutType: WorkoutType) {
        Text(
            text = "$count",
            color = MaterialTheme.colorScheme.onPrimary,
-           style = MaterialTheme.typography.headlineLarge
+           style = MaterialTheme.typography.headlineMedium
        )
-       Spacer(modifier = Modifier.height(8.dp))
+
        Row(
            horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
            verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
