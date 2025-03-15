@@ -508,9 +508,9 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
                 else -> {""}
             },
             color = MaterialTheme.colorScheme.surface,
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineSmall
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -535,7 +535,7 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
                 style = MaterialTheme.typography.headlineLarge
             )
         }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = { viewModel.startTimer() },
             enabled = !viewModel.isRunning,
@@ -552,7 +552,7 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { viewModel.stopTimer() },
             enabled = viewModel.isRunning,
@@ -772,9 +772,9 @@ fun CounterScreen(workoutType: WorkoutType) {
                WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber Verlauf"
            },
            color = MaterialTheme.colorScheme.surface,
-           style = MaterialTheme.typography.headlineMedium
+           style = MaterialTheme.typography.headlineSmall
        )
-       Spacer(modifier = Modifier.height(16.dp))
+       Spacer(modifier = Modifier.height(8.dp))
        LazyColumn(
            modifier = Modifier
                .weight(1f)
@@ -795,7 +795,7 @@ fun CounterScreen(workoutType: WorkoutType) {
            color = MaterialTheme.colorScheme.onPrimary,
            style = MaterialTheme.typography.headlineLarge
        )
-       Spacer(modifier = Modifier.height(16.dp))
+       Spacer(modifier = Modifier.height(8.dp))
        Row(
            horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
            verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
@@ -827,7 +827,7 @@ fun CounterScreen(workoutType: WorkoutType) {
                )
            }
        }
-       Spacer(modifier = Modifier.height(16.dp))
+       Spacer(modifier = Modifier.height(8.dp))
        Row(
            horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Buttons
            verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
