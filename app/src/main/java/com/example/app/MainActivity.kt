@@ -50,11 +50,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.ViewModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -251,6 +253,7 @@ fun AppNavigation() {
         composable("planks") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.PLANK)) }
         composable("climber") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.MOUNTAIN_CLIMBER)) }
         composable("overview") { DailyOverviewScreen() }
+        composable("stats") { TotalWorkoutOverviewScreen(context) }
         composable("dataTransfer") { DataTransferScreen(navController) }
     }
 }
@@ -319,7 +322,8 @@ fun StartScreen(navController: NavController) {
                     "Crunches" to "crunches",
                 )
                 val goals = listOf(
-                    "Daily Goals" to "overview"
+                    "Tägliche Ziele" to "overview",
+                    "Statistik" to "stats"
                 )
                 items(exercises) { (title, route) ->
                     ExerciseTile(navController = navController, label = title, route = route, )
@@ -426,6 +430,12 @@ fun ActionTile(label: String, type: String, onClick: () -> Unit) {
 
 @Composable
 fun GoalTile(navController: NavController, label: String, route: String) {
+    val imageId = when (route) {
+        "stats" -> R.drawable.stats
+        "overview" -> R.drawable.goals
+        else -> R.drawable.logo
+    }
+
 
     Column(
         modifier = Modifier
@@ -439,7 +449,7 @@ fun GoalTile(navController: NavController, label: String, route: String) {
         verticalArrangement = Arrangement.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.goals),
+            painter = painterResource(id = imageId),
             contentDescription = null,
             modifier = Modifier.size(125.dp)
         )
@@ -902,143 +912,191 @@ fun DailyOverviewScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 0.dp, vertical = 36.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = "Daily Goals",
-            color = MaterialTheme.colorScheme.surface,
-            style = MaterialTheme.typography.headlineLarge
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        recordsByDate.forEach { (date, recordsForDate) ->
-            item {
-                Card(
-                    modifier = Modifier
-                        .shadow(10.dp, shape = RoundedCornerShape(8.dp))
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                            Text(text = date, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            // Gruppiere für den jeweiligen Tag die Records nach Workout-Typ
-                            val recordsByType = recordsForDate.groupBy { it.type }
-                            recordsByType.forEach { (type, recordsOfType) ->
-                                // Berechnung der erreichten und der Ziel-Sätze je nach Typ:
-                                val (targetSets, achievedSets) = when (type) {
-                                    // Wiederholungsbasierte Workouts
-                                    WorkoutType.PUSH_UP -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getPushUpGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        // Errechnete Sätze = (gesamte Wiederholungen / Wiederholungen pro Satz), begrenzt auf das Ziel
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    WorkoutType.SQUAT -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getSquatGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    WorkoutType.LUNGE -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getLungeGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    WorkoutType.ROWING -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getRowingGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    WorkoutType.CRUNCHES -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getCrunchesGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    WorkoutType.SHOULDER_PRESS -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getShoulderPressGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    WorkoutType.BURPEES -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getBurpeesGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    WorkoutType.LEG_RAISES -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getLegRaisesGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    WorkoutType.TRIZEPS_DIPS -> {
-                                        val (goalReps, goalSets) = WorkoutSettingsRepository.getTrizepsDipsGoal(context)
-                                        val totalReps = recordsOfType.sumOf { it.count ?: 0 }
-                                        val achieved = (totalReps / goalReps).coerceAtMost(goalSets)
-                                        Pair(goalSets, achieved)
-                                    }
-                                    // Timer-basierte Workouts (PLANK und MOUNTAIN_CLIMBER)
-                                    WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> {
-                                        val (_, _, target) = WorkoutSettingsRepository.getTargetTime(context, type)
-                                        val totalSets = recordsOfType.sumOf { it.sets ?: 0 }
-                                        Pair(target, totalSets)
-                                    }
-                                }
+        Column(modifier = Modifier.weight(1f),verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(32.dp))
+            // Festes Logo oben
+            Image(
+                painter = painterResource(id = R.drawable.goals_cropped),
+                contentDescription = "App Logo",
+                modifier = Modifier.size(90.dp)
+            )
+            Text(
+                text = "Tägliche Ziele",
+                color = MaterialTheme.colorScheme.surface,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(0.dp)
+            ) {
+                recordsByDate.forEach { (date, recordsForDate) ->
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(text = date, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                // Gruppiere für den jeweiligen Tag die Records nach Workout-Typ
+                                val recordsByType = recordsForDate.groupBy { it.type }
+                                recordsByType.forEach { (type, recordsOfType) ->
+                                    // Berechnung der erreichten und der Ziel-Sätze je nach Typ:
+                                    val (targetSets, achievedSets) = when (type) {
+                                        // Wiederholungsbasierte Workouts
+                                        WorkoutType.PUSH_UP -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getPushUpGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            // Errechnete Sätze = (gesamte Wiederholungen / Wiederholungen pro Satz), begrenzt auf das Ziel
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
 
-                                val goalReached = achievedSets >= targetSets
+                                        WorkoutType.SQUAT -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getSquatGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
 
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween // Gleichmäßige Verteilung
-                                ) {
-                                    Icon(
+                                        WorkoutType.LUNGE -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getLungeGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
+
+                                        WorkoutType.ROWING -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getRowingGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
+
+                                        WorkoutType.CRUNCHES -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getCrunchesGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
+
+                                        WorkoutType.SHOULDER_PRESS -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getShoulderPressGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
+
+                                        WorkoutType.BURPEES -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getBurpeesGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
+
+                                        WorkoutType.LEG_RAISES -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getLegRaisesGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
+
+                                        WorkoutType.TRIZEPS_DIPS -> {
+                                            val (goalReps, goalSets) = WorkoutSettingsRepository.getTrizepsDipsGoal(
+                                                context
+                                            )
+                                            val totalReps = recordsOfType.sumOf { it.count ?: 0 }
+                                            val achieved =
+                                                (totalReps / goalReps).coerceAtMost(goalSets)
+                                            Pair(goalSets, achieved)
+                                        }
+                                        // Timer-basierte Workouts (PLANK und MOUNTAIN_CLIMBER)
+                                        WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> {
+                                            val (_, _, target) = WorkoutSettingsRepository.getTargetTime(
+                                                context,
+                                                type
+                                            )
+                                            val totalSets = recordsOfType.sumOf { it.sets ?: 0 }
+                                            Pair(target, totalSets)
+                                        }
+                                    }
+
+                                    val goalReached = achievedSets >= targetSets
+
+                                    Row(
                                         modifier = Modifier
-                                            .padding(end = 8.dp),
-                                        imageVector = Icons.Default.Star,
-                                        contentDescription = "Star",
-                                        tint = if (goalReached) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
-                                    )
-                                    Text(
-                                        text = when (type) {
-                                            WorkoutType.PUSH_UP -> "Push‑Ups"
-                                            WorkoutType.SQUAT -> "Kniebeugen"
-                                            WorkoutType.LUNGE -> "Ausfallschritte"
-                                            WorkoutType.ROWING -> "Rudern"
-                                            WorkoutType.CRUNCHES -> "Crunches"
-                                            WorkoutType.SHOULDER_PRESS -> "Schulterpresse"
-                                            WorkoutType.BURPEES -> "Burpees"
-                                            WorkoutType.LEG_RAISES -> "Beinheben"
-                                            WorkoutType.TRIZEPS_DIPS -> "Trizeps-Dips"
-                                            WorkoutType.PLANK -> "Planks"
-                                            WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber"
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween // Gleichmäßige Verteilung
+                                    ) {
+                                        Icon(
+                                            modifier = Modifier
+                                                .padding(end = 8.dp),
+                                            imageVector = Icons.Default.Star,
+                                            contentDescription = "Star",
+                                            tint = if (goalReached) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
+                                        )
+                                        Text(
+                                            text = when (type) {
+                                                WorkoutType.PUSH_UP -> "Push‑Ups"
+                                                WorkoutType.SQUAT -> "Kniebeugen"
+                                                WorkoutType.LUNGE -> "Ausfallschritte"
+                                                WorkoutType.ROWING -> "Rudern"
+                                                WorkoutType.CRUNCHES -> "Crunches"
+                                                WorkoutType.SHOULDER_PRESS -> "Schulterpresse"
+                                                WorkoutType.BURPEES -> "Burpees"
+                                                WorkoutType.LEG_RAISES -> "Beinheben"
+                                                WorkoutType.TRIZEPS_DIPS -> "Trizeps-Dips"
+                                                WorkoutType.PLANK -> "Planks"
+                                                WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber"
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
 
-                                    Text(
-                                        text = if (goalReached) "Ziel erreicht" else "Ziel nicht erreicht",
-                                        modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (goalReached) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                                        textAlign = TextAlign.End // Rechts ausrichten für bessere Lesbarkeit
-                                    )
+                                        Text(
+                                            text = if (goalReached) "Ziel erreicht" else "Ziel nicht erreicht",
+                                            modifier = Modifier.weight(1f),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (goalReached) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                                            textAlign = TextAlign.End // Rechts ausrichten für bessere Lesbarkeit
+                                        )
 
+                                    }
                                 }
                             }
                         }
@@ -1046,8 +1104,139 @@ fun DailyOverviewScreen() {
                 }
             }
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "©2025 Sebastian Grauthoff - App Version 1.0",
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp, bottom = 30.dp).fillMaxWidth().align(Alignment.CenterHorizontally),
+            textAlign = TextAlign.Center
+
+        )
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+
+@Composable
+fun TotalWorkoutOverviewScreen(context: Context) {
+    val allRecords = WorkoutHistoryRepository.loadHistory(context)
+    val recordsByType = allRecords.groupBy { it.type }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        Column(modifier = Modifier.weight(1f),verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(32.dp))
+            // Festes Logo oben
+            Image(
+                painter = painterResource(id = R.drawable.stats_cropped),
+                contentDescription = "App Logo",
+                modifier = Modifier.size(90.dp)
+            )
+            Text(
+                text = "Statistik",
+                color = MaterialTheme.colorScheme.surface,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                recordsByType.forEach { (type, records) ->
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                val totalValue = when (type) {
+                                    // Wiederholungsbasierte Workouts: Gesamtzahl aller Wiederholungen berechnen
+                                    WorkoutType.PUSH_UP,
+                                    WorkoutType.SQUAT,
+                                    WorkoutType.LUNGE,
+                                    WorkoutType.ROWING,
+                                    WorkoutType.CRUNCHES,
+                                    WorkoutType.SHOULDER_PRESS,
+                                    WorkoutType.BURPEES,
+                                    WorkoutType.LEG_RAISES,
+                                    WorkoutType.TRIZEPS_DIPS -> {
+                                        records.sumOf { it.count ?: 0 }.toString()
+                                    }
+
+                                    // Zeitbasierte Workouts: Gesamtzeit in hh:mm:ss umwandeln
+                                    WorkoutType.PLANK,
+                                    WorkoutType.MOUNTAIN_CLIMBER -> {
+                                        val totalMillis = records.sumOf { (it.durationMillis?.toLong() ?: 0L) * (it.sets ?: 1) }
+                                        formatTime(totalMillis)
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = getWorkoutName(type),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = totalValue,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "©2025 Sebastian Grauthoff - App Version 1.0",
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp, bottom = 30.dp).fillMaxWidth().align(Alignment.CenterHorizontally),
+            textAlign = TextAlign.Center
+
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+fun formatTime(milliseconds: Long): String {
+    val hours = TimeUnit.MILLISECONDS.toHours(milliseconds)
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(milliseconds) % 60
+    val seconds = TimeUnit.MILLISECONDS.toSeconds(milliseconds) % 60
+    return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+}
+
+fun getWorkoutName(type: WorkoutType): String {
+    return when (type) {
+        WorkoutType.PUSH_UP -> "Push‑Ups"
+        WorkoutType.SQUAT -> "Kniebeugen"
+        WorkoutType.LUNGE -> "Ausfallschritte"
+        WorkoutType.ROWING -> "Rudern"
+        WorkoutType.CRUNCHES -> "Crunches"
+        WorkoutType.SHOULDER_PRESS -> "Schulterpresse"
+        WorkoutType.BURPEES -> "Burpees"
+        WorkoutType.LEG_RAISES -> "Beinheben"
+        WorkoutType.TRIZEPS_DIPS -> "Trizeps-Dips"
+        WorkoutType.PLANK -> "Planks"
+        WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber"
+    }
+}
+
 
 fun exportWorkoutHistory(context: Context) {
     val history = WorkoutHistoryRepository.loadHistory(context)

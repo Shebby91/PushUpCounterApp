@@ -311,8 +311,8 @@
                         <option name="values">
                           <map>
                             <entry key="assetSourceType" value="FILE" />
-                            <entry key="outputName" value="goals" />
-                            <entry key="sourceFile" value="C:\Users\sgrau\Downloads\vectors\goals.svg" />
+                            <entry key="outputName" value="achievments_cropped" />
+                            <entry key="sourceFile" value="C:\Users\sgrau\Downloads\vectors\achievments-cropped.svg" />
                           </map>
                         </option>
                       </PersistentState>

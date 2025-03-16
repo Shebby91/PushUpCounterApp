@@ -26,10 +26,10 @@ fun WorkoutHistoryItem(
     // Unterschiedliche Detailtexte je nach Typ
     val detailsText = when (record.type) {
         WorkoutType.PUSH_UP -> "${record.count ?: 0} Push‑Ups"
-        WorkoutType.SQUAT -> "${record.count ?: 0} Kniebeugen"
+        WorkoutType.SQUAT -> "${record.count ?: 0} Kniebeug."
         WorkoutType.LUNGE -> "${record.count ?: 0} Schritte"
         WorkoutType.ROWING -> "${record.count ?: 0} Rudern"
-        WorkoutType.CRUNCHES -> "${record.count ?: 0} Bauchpr."
+        WorkoutType.CRUNCHES -> "${record.count ?: 0} Crunches"
         WorkoutType.SHOULDER_PRESS-> "${record.count ?: 0} Schulterpr."
         WorkoutType.BURPEES-> "${record.count ?: 0} Burpees"
         WorkoutType.LEG_RAISES-> "${record.count ?: 0} Beinheben"
