@@ -254,6 +254,7 @@ fun AppNavigation() {
         composable("climber") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.MOUNTAIN_CLIMBER)) }
         composable("overview") { DailyOverviewScreen() }
         composable("stats") { TotalWorkoutOverviewScreen(context) }
+        composable("achievements") { TotalWorkoutOverviewScreen(context) }
         composable("dataTransfer") { DataTransferScreen(navController) }
     }
 }
@@ -323,7 +324,8 @@ fun StartScreen(navController: NavController) {
                 )
                 val goals = listOf(
                     "Tägliche Ziele" to "overview",
-                    "Statistik" to "stats"
+                    "Statistik" to "stats",
+                    "Errungenschaften" to "achievements"
                 )
                 items(exercises) { (title, route) ->
                     ExerciseTile(navController = navController, label = title, route = route, )
@@ -416,7 +418,7 @@ fun ActionTile(label: String, type: String, onClick: () -> Unit) {
         Image(
             painter = painterResource(id = imageId),
             contentDescription = null,
-            modifier = Modifier.size(115.dp)
+            modifier = Modifier.size(120.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -433,6 +435,7 @@ fun GoalTile(navController: NavController, label: String, route: String) {
     val imageId = when (route) {
         "stats" -> R.drawable.stats
         "overview" -> R.drawable.goals
+        "achievements" -> R.drawable.achievments
         else -> R.drawable.logo
     }
 
