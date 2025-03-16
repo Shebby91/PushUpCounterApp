@@ -40,6 +40,9 @@ import android.os.Environment
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -49,6 +52,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -254,7 +258,7 @@ fun AppNavigation() {
         composable("climber") { WorkoutTimerScreen(WorkoutTimerViewModel(context,WorkoutType.MOUNTAIN_CLIMBER)) }
         composable("overview") { DailyOverviewScreen() }
         composable("stats") { TotalWorkoutOverviewScreen(context) }
-        composable("achievements") { TotalWorkoutOverviewScreen(context) }
+        composable("achievements") { AchievementsScreen(context) }
         composable("dataTransfer") { DataTransferScreen(navController) }
     }
 }
@@ -324,7 +328,7 @@ fun StartScreen(navController: NavController) {
                 )
                 val goals = listOf(
                     "Tägliche Ziele" to "overview",
-                    "Statistik" to "stats",
+                    "Gesamtstatistik" to "stats",
                     "Errungenschaften" to "achievements"
                 )
                 items(exercises) { (title, route) ->
@@ -1133,17 +1137,19 @@ fun TotalWorkoutOverviewScreen(context: Context) {
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        Column(modifier = Modifier.weight(1f),verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Spacer(modifier = Modifier.height(32.dp))
-            // Festes Logo oben
             Image(
                 painter = painterResource(id = R.drawable.stats_cropped),
                 contentDescription = "App Logo",
                 modifier = Modifier.size(90.dp)
             )
             Text(
-                text = "Statistik",
+                text = "Gesamtstatistik",
                 color = MaterialTheme.colorScheme.surface,
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
@@ -1162,8 +1168,8 @@ fun TotalWorkoutOverviewScreen(context: Context) {
                             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
+                                // Berechnung der Gesamtzahl für Zeitbasierte und Wiederholungs-Übungen
                                 val totalValue = when (type) {
-                                    // Wiederholungsbasierte Workouts: Gesamtzahl aller Wiederholungen berechnen
                                     WorkoutType.PUSH_UP,
                                     WorkoutType.SQUAT,
                                     WorkoutType.LUNGE,
@@ -1173,15 +1179,68 @@ fun TotalWorkoutOverviewScreen(context: Context) {
                                     WorkoutType.BURPEES,
                                     WorkoutType.LEG_RAISES,
                                     WorkoutType.TRIZEPS_DIPS -> {
-                                        records.sumOf { it.count ?: 0 }.toString()
+                                        records.sumOf { it.count ?: 0 }
                                     }
 
-                                    // Zeitbasierte Workouts: Gesamtzeit in hh:mm:ss umwandeln
                                     WorkoutType.PLANK,
                                     WorkoutType.MOUNTAIN_CLIMBER -> {
-                                        val totalMillis = records.sumOf { (it.durationMillis?.toLong() ?: 0L) * (it.sets ?: 1) }
-                                        formatTime(totalMillis)
+                                        records.sumOf { (it.durationMillis?.toLong() ?: 0L) * (it.sets ?: 1) }
                                     }
+                                }
+
+                                // Initialisierungswert für Animation
+                                var animatedTotalValue by remember { mutableStateOf(0f) }
+
+                                // Animation starten
+                                LaunchedEffect(totalValue) {
+                                    animatedTotalValue = totalValue.toFloat()
+                                }
+
+                                val animatedProgress by animateFloatAsState(
+                                    targetValue = animatedTotalValue,
+                                    animationSpec = tween(durationMillis = 1000)
+                                )
+
+                                val displayValue = when (type) {
+                                    WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> {
+                                        formatTime(animatedProgress.toLong())
+                                    }
+                                    else -> {
+                                        animatedProgress.toInt().toString()
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    val imageId = when (type) {
+                                        WorkoutType.SQUAT -> R.drawable.squats
+                                        WorkoutType.BURPEES -> R.drawable.burpees
+                                        WorkoutType.LUNGE -> R.drawable.lunges
+                                        WorkoutType.MOUNTAIN_CLIMBER -> R.drawable.mountainclimber
+                                        WorkoutType.PUSH_UP -> R.drawable.pushups
+                                        WorkoutType.PLANK -> R.drawable.planks
+                                        WorkoutType.SHOULDER_PRESS -> R.drawable.shoulderpress
+                                        WorkoutType.LEG_RAISES -> R.drawable.legraises
+                                        WorkoutType.ROWING -> R.drawable.rowing
+                                        WorkoutType.TRIZEPS_DIPS -> R.drawable.trizepsdips
+                                        WorkoutType.CRUNCHES -> R.drawable.crunches
+                                        else -> R.drawable.logo
+                                    }
+
+                                    Image(
+                                        painter = painterResource(id = imageId),
+                                        contentDescription = "Workout Icon",
+                                        modifier = Modifier.size(90.dp)
+                                    )
+
+                                    Text(
+                                        text = displayValue,
+                                        style = MaterialTheme.typography.displayMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
 
                                 Row(
@@ -1193,10 +1252,14 @@ fun TotalWorkoutOverviewScreen(context: Context) {
                                         text = getWorkoutName(type),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
+
                                     Text(
-                                        text = totalValue,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
+                                        text = when (type) {
+                                            WorkoutType.PLANK -> "Gesamtzeit"
+                                            WorkoutType.MOUNTAIN_CLIMBER -> "Gesamtzeit"
+                                            else -> "Wiederholungen"
+                                        },
+                                        style = MaterialTheme.typography.bodyLarge
                                     )
                                 }
                             }
@@ -1210,13 +1273,177 @@ fun TotalWorkoutOverviewScreen(context: Context) {
             text = "©2025 Sebastian Grauthoff - App Version 1.0",
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 8.dp, bottom = 30.dp).fillMaxWidth().align(Alignment.CenterHorizontally),
+            modifier = Modifier.padding(top = 8.dp, bottom = 30.dp).fillMaxWidth()
+                .align(Alignment.CenterHorizontally),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun AchievementsScreen(context: Context) {
+    val allRecords = WorkoutHistoryRepository.loadHistory(context)
+    val recordsByType = allRecords.groupBy { it.type }
+    val goals = getWorkoutGoals()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(32.dp))
+            Image(
+                painter = painterResource(id = R.drawable.achievments_cropped),
+                contentDescription = "Achievements Icon",
+                modifier = Modifier.size(90.dp)
+            )
+            Text(
+                text = "Errungenschaften",
+                color = MaterialTheme.colorScheme.surface,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+            )
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                goals.forEach { (type, targets) ->
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                // Berechnung der Gesamtzeit für Zeitbasierte Übungen
+                                val totalValue = recordsByType[type]?.sumOf { record ->
+                                    when (type) {
+                                        WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> (record.durationMillis?.toLong()
+                                            ?: 0) * (record.sets ?: 1) // In Millisekunden umrechnen
+                                        else -> (record.count
+                                            ?: 0).toLong() // Normale Wiederholungen bleiben unverändert
+                                    }
+                                } ?: 0L
+
+                                Text(
+                                    text = getWorkoutName(type),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                targets.forEach { goal ->
+                                    val goalMillis = if (type in listOf(
+                                            WorkoutType.PLANK,
+                                            WorkoutType.MOUNTAIN_CLIMBER
+                                        )
+                                    ) goal * 1000L else goal.toLong()
+                                    val targetProgress =
+                                        (totalValue.toFloat() / goalMillis.toFloat()).coerceIn(
+                                            0f,
+                                            1f
+                                        )
+                                    var animatedProgress by remember { mutableStateOf(0f) }
+
+                                    LaunchedEffect(targetProgress) {
+                                        animatedProgress = targetProgress
+                                    }
+
+                                    val progress by animateFloatAsState(
+                                        targetValue = animatedProgress,
+                                        animationSpec = tween(
+                                            durationMillis = 1000,
+                                            easing = FastOutSlowInEasing
+                                        ),
+                                        label = "progressAnimation"
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        val goalText = if (type in listOf(
+                                                WorkoutType.PLANK,
+                                                WorkoutType.MOUNTAIN_CLIMBER
+                                            )
+                                        ) {
+                                            "Schaffe ${formatTime(goalMillis)} Gesamtzeit"
+                                        } else {
+                                            "Schaffe $goal Wiederholungen"
+                                        }
+
+                                        Text(
+                                            text = goalText,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+
+                                        Icon(
+                                            imageVector = Icons.Default.Star,
+                                            contentDescription = "Achievement Star",
+                                            tint = if (progress >= 1f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
+                                        )
+                                    }
+                                    LinearProgressIndicator(
+                                        progress = { progress },
+                                        modifier = Modifier
+                                            .padding(vertical = 8.dp)
+                                            .fillMaxWidth()
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(4.dp)),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = MaterialTheme.colorScheme.background,
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "©2025 Sebastian Grauthoff - App Version 1.0",
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp, bottom = 30.dp).fillMaxWidth()
+                .align(Alignment.CenterHorizontally),
             textAlign = TextAlign.Center
 
         )
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+fun getWorkoutGoals(): Map<WorkoutType, List<Int>> {
+    return mapOf(
+        WorkoutType.PUSH_UP to listOf(10, 100, 500, 1000, 2000, 5000, 10000, 15000, 25000, 50000),
+        WorkoutType.PLANK to listOf(60, 180, 600, 1200, 2400, 3600, 7200, 10800, 18000, 28800),
+        WorkoutType.MOUNTAIN_CLIMBER to listOf(60, 180, 300, 600, 1200, 2400, 3600, 5400, 7200, 10800),
+        WorkoutType.SQUAT to listOf(30, 200, 500, 1000, 2000, 5000, 10000, 15000, 25000, 50000),
+        WorkoutType.LUNGE to listOf(30, 200, 500, 1000, 2000, 4000, 7000, 12000, 20000, 30000),
+        WorkoutType.ROWING to listOf(30, 200, 500, 1000, 2000, 4000, 6000, 10000, 20000, 30000),
+        WorkoutType.CRUNCHES to listOf(50, 200, 500, 1000, 2500, 5000, 10000, 20000, 30000, 50000),
+        WorkoutType.SHOULDER_PRESS to listOf(50, 100, 250, 500, 1000, 1500, 3000, 5000, 7000, 10000),
+        WorkoutType.BURPEES to listOf(10, 100, 500, 1000, 2500, 5000, 10000, 20000, 35000, 50000),
+        WorkoutType.LEG_RAISES to listOf(20, 100, 250, 500, 1000, 2000, 3000, 5000, 8000, 12000),
+        WorkoutType.TRIZEPS_DIPS to listOf(20, 100, 250, 500, 1000, 1500, 2500, 4000, 6000, 10000)
+    )
+}
+
+
 fun formatTime(milliseconds: Long): String {
     val hours = TimeUnit.MILLISECONDS.toHours(milliseconds)
     val minutes = TimeUnit.MILLISECONDS.toMinutes(milliseconds) % 60
@@ -1239,7 +1466,6 @@ fun getWorkoutName(type: WorkoutType): String {
         WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber"
     }
 }
-
 
 fun exportWorkoutHistory(context: Context) {
     val history = WorkoutHistoryRepository.loadHistory(context)

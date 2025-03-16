@@ -34,7 +34,7 @@ fun WorkoutHistoryItem(
         WorkoutType.BURPEES-> "${record.count ?: 0} Burpees"
         WorkoutType.LEG_RAISES-> "${record.count ?: 0} Beinheben"
         WorkoutType.TRIZEPS_DIPS-> "${record.count ?: 0} Dips"
-        WorkoutType.PLANK -> "Dauer: ${record.durationMillis?.div(1000) ?: 0} Sek."
+        WorkoutType.PLANK -> "${record.durationMillis?.toLong()?.let { formatTime(it) }?: 0}"
         WorkoutType.MOUNTAIN_CLIMBER -> "Dauer: ${record.durationMillis?.div(1000) ?: 0} Sek."
     }
 

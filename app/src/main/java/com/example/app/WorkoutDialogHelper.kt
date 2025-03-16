@@ -1,4 +1,7 @@
 package com.example.app
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.AlertDialog
@@ -10,7 +13,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun DeleteCounterWorkoutDialog(
@@ -75,12 +80,40 @@ fun EditWorkoutDialog(
     onDismiss: () -> Unit,
     onConfirm: (newMinutes: Int, newSeconds: Int) -> Unit
 ) {
+    val initialMinutes = (record.durationMillis ?: 0) / 60000
+    val initialSeconds = ((record.durationMillis ?: 0) % 60000) / 1000
+    var minutesText by remember { mutableStateOf(initialMinutes.toString()) }
+    var secondsText by remember { mutableStateOf(initialSeconds.toString()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Eintrag bearbeiten",color = MaterialTheme.colorScheme.onTertiary) },
-        text = { Text("Hier kannst du die Werte bearbeiten (nicht vollständig implementiert).",color = MaterialTheme.colorScheme.onTertiary) },
+        text = {
+            Column {
+                Row {
+                    OutlinedTextField(
+                        value = minutesText,
+                        onValueChange = { minutesText = it },
+                        label = { Text("Minuten", color = MaterialTheme.colorScheme.onTertiary) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f).padding(end = 4.dp)
+
+                    )
+                    OutlinedTextField(
+                        value = secondsText,
+                        onValueChange = { secondsText = it },
+                        label = { Text("Sekunden", color = MaterialTheme.colorScheme.onTertiary) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f).padding(start = 4.dp)
+                    )
+                }
+            }
+        },
         confirmButton = {
-            Button(onClick = { onConfirm(0, 0) }) {
+            Button(onClick = {
+                val newMinutes = minutesText.toIntOrNull() ?: initialMinutes
+                val newSeconds = secondsText.toIntOrNull() ?: initialSeconds
+                onConfirm(newMinutes, newSeconds)
+            }) {
                 Text("Speichern")
             }
         },
