@@ -189,7 +189,8 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
             date = date,
             type = workoutType,
             durationMillis = totalMilliseconds,
-            sets = 1
+            sets = 1,
+            goalSets = goalSets
         )
         WorkoutHistoryRepository.addOrUpdateRecord(context, record)
         history = WorkoutHistoryRepository.loadHistory(context)
@@ -684,7 +685,10 @@ fun CounterScreen(workoutType: WorkoutType) {
         val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
         val index = currentHistory.indexOf(originalRecord)
         if (index != -1) {
-            currentHistory[index] = updatedRecord
+            currentHistory[index] = updatedRecord.copy(
+                goalReps = updatedRecord.goalReps ?: originalRecord.goalReps,
+                goalSets = updatedRecord.goalSets ?: originalRecord.goalSets
+            )
             WorkoutHistoryRepository.saveHistory(context, currentHistory)
             history = currentHistory
         }
@@ -700,16 +704,26 @@ fun CounterScreen(workoutType: WorkoutType) {
     fun addWorkoutRecord() {
         val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
         val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
-        // Für wiederholungsbasierte Workouts (Push‑Ups, Kniebeugen)
+
         val existingRecord = currentHistory.find { it.date == date && it.type == workoutType }
         if (existingRecord != null) {
-            val updatedRecord = existingRecord.copy(count = (existingRecord.count ?: 0) + 1)
-            currentHistory.remove(existingRecord)
-            currentHistory.add(updatedRecord)
+            val updatedRecord = existingRecord.copy(
+                count = (existingRecord.count ?: 0) + 1,
+                goalReps = reps.toIntOrNull() ?: existingRecord.goalReps,
+                goalSets = sets.toIntOrNull() ?: existingRecord.goalSets
+            )
+            currentHistory[currentHistory.indexOf(existingRecord)] = updatedRecord
         } else {
-            val newRecord = WorkoutRecord(date = date, type = workoutType, count = 1)
+            val newRecord = WorkoutRecord(
+                date = date,
+                type = workoutType,
+                count = 1,
+                goalReps = reps.toIntOrNull() ?: 0,
+                goalSets = sets.toIntOrNull() ?: 0
+            )
             currentHistory.add(newRecord)
         }
+
         WorkoutHistoryRepository.saveHistory(context, currentHistory)
         history = currentHistory
     }
@@ -927,189 +941,110 @@ fun DailyOverviewScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(32.dp))
-        Image(
-            painter = painterResource(id = R.drawable.goals_cropped),
-            contentDescription = "App Logo",
-            modifier = Modifier.size(90.dp)
-        )
-        Text(
-            text = "Tägliche Ziele",
-            color = MaterialTheme.colorScheme.surface,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(0.dp)
-        ) {
-            recordsByDate.forEach { (date, recordsForDate) ->
-                item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.Start
+            Image(
+                painter = painterResource(id = R.drawable.goals_cropped),
+                contentDescription = "App Logo",
+                modifier = Modifier.size(90.dp)
+            )
+            Text(
+                text = "Tägliche Ziele",
+                color = MaterialTheme.colorScheme.surface,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(0.dp)
+            ) {
+                recordsByDate.forEach { (date, recordsForDate) ->
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
                         ) {
-                            Text(text = date, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            recordsForDate.groupBy { it.type }.forEach { (type, recordsOfType) ->
-                                val (targetSets, achievedSets) = when (type) {
-                                    WorkoutType.PUSH_UP -> WorkoutSettingsRepository.getPushUpGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                Text(text = date, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                recordsForDate.groupBy { it.type }.forEach { (type, recordsOfType) ->
+                                    val (targetSets, achievedSets, goalReached) = when (type) {
+                                        WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> {
+                                            // Bei Mountain Climbers und Planks wird nur goalSets überprüft
+                                            val totalSets = recordsOfType.sumOf { it.sets ?: 0 }
+                                            val goalSets = recordsOfType.firstOrNull()?.goalSets ?: 0
+                                            val goalReached = totalSets >= goalSets
+                                            Triple(goalSets, totalSets, goalReached)
+                                        }
+
+                                        else -> {
+                                            // Für andere Übungen wird count überprüft (count >= goalReps * goalSets)
+                                            val goalReps = recordsOfType.firstOrNull()?.goalReps ?: 0
+                                            val goalSets = recordsOfType.firstOrNull()?.goalSets ?: 0
+                                            val totalCount = recordsOfType.sumOf { it.count ?: 0 }
+                                            val goalReached = totalCount >= (goalReps * goalSets)
+                                            Triple(goalReps * goalSets, totalCount, goalReached)
+                                        }
                                     }
 
-                                    WorkoutType.SQUAT -> WorkoutSettingsRepository.getSquatGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
+                                    val progress = if (targetSets > 0) achievedSets.toFloat() / targetSets.toFloat() else 1f
+
+                                    var animatedProgress by remember { mutableStateOf(0f) }
+                                    LaunchedEffect(progress) {
+                                        animatedProgress = progress
                                     }
-
-                                    WorkoutType.LUNGE -> WorkoutSettingsRepository.getLungeGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
-                                    }
-
-                                    WorkoutType.ROWING -> WorkoutSettingsRepository.getRowingGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
-                                    }
-
-                                    WorkoutType.CRUNCHES -> WorkoutSettingsRepository.getCrunchesGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
-                                    }
-
-                                    WorkoutType.SHOULDER_PRESS -> WorkoutSettingsRepository.getShoulderPressGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
-                                    }
-
-                                    WorkoutType.BURPEES -> WorkoutSettingsRepository.getBurpeesGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
-                                    }
-
-                                    WorkoutType.LEG_RAISES -> WorkoutSettingsRepository.getLegRaisesGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
-                                    }
-
-                                    WorkoutType.TRIZEPS_DIPS -> WorkoutSettingsRepository.getTrizepsDipsGoal(
-                                        context
-                                    ).let { goal ->
-                                        Pair(
-                                            goal.second,
-                                            (recordsOfType.sumOf {
-                                                it.count ?: 0
-                                            } / goal.first).coerceAtMost(goal.second))
-                                    }
-
-                                    WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> WorkoutSettingsRepository.getTargetTime(
-                                        context,
-                                        type
-                                    ).let { Pair(it.third, recordsOfType.sumOf { it.sets ?: 0 }) }
-                                }
-
-                                val progress = achievedSets.toFloat() / targetSets.toFloat()
-                                val goalReached = achievedSets >= targetSets
-
-                                var animatedProgress by remember { mutableStateOf(0f) }
-                                LaunchedEffect(progress) {
-                                    animatedProgress = progress
-                                }
-                                val animatedProgressState by animateFloatAsState(
-                                    targetValue = animatedProgress,
-                                    animationSpec = tween(durationMillis = 1000)
-                                )
-
-                                Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = getWorkoutName(type),
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(
-                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                            text = if (goalReached) "Ziel erreicht" else "Ziel nicht erreicht",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = if (goalReached) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                                        )
-                                        Icon(
-                                            imageVector = Icons.Default.Star,
-                                            contentDescription = "Star",
-                                            tint = if (goalReached) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
-                                    LinearProgressIndicator(
-                                        progress = { animatedProgressState },
-                                        modifier = Modifier
-                                            .padding(vertical = 8.dp)
-                                            .fillMaxWidth()
-                                            .height(8.dp)
-                                            .clip(RoundedCornerShape(4.dp)),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        trackColor = MaterialTheme.colorScheme.background,
+                                    val animatedProgressState by animateFloatAsState(
+                                        targetValue = animatedProgress,
+                                        animationSpec = tween(durationMillis = 1000)
                                     )
+
+                                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = getWorkoutName(type),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Text(
+                                                modifier = Modifier.padding(horizontal = 16.dp),
+                                                text = if (goalReached) "Ziel erreicht" else "Ziel nicht erreicht",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (goalReached) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                                            )
+                                            Icon(
+                                                imageVector = Icons.Default.Star,
+                                                contentDescription = "Star",
+                                                tint = if (goalReached) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        LinearProgressIndicator(
+                                            progress = { animatedProgressState },
+                                            modifier = Modifier
+                                                .padding(vertical = 8.dp)
+                                                .fillMaxWidth()
+                                                .height(8.dp)
+                                                .clip(RoundedCornerShape(4.dp)),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.background,
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(

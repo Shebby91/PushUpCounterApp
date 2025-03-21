@@ -32,7 +32,9 @@ object WorkoutHistoryRepository {
                     it.durationMillis == updatedRecord.durationMillis
         }
         if (index != -1) {
-            currentHistory[index] = updatedRecord
+            currentHistory[index] = updatedRecord.copy(
+                goalSets = updatedRecord.goalSets ?: currentHistory[index].goalSets // goalSets nur setzen, wenn vorhanden
+            )
             saveHistory(context, currentHistory)
         }
     }
@@ -45,7 +47,11 @@ object WorkoutHistoryRepository {
                     it.durationMillis == newRecord.durationMillis
         }
         if (existingRecord != null) {
-            val updatedRecord = existingRecord.copy(sets = existingRecord.sets?.plus(1))
+            // goalSets aktualisieren
+            val updatedRecord = existingRecord.copy(
+                sets = existingRecord.sets?.plus(1),
+                goalSets = newRecord.goalSets ?: existingRecord.goalSets // goalSets übernehmen, wenn gesetzt
+            )
             updateRecord(context, updatedRecord)
         } else {
             currentHistory.add(newRecord)

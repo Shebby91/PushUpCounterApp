@@ -38,75 +38,11 @@ fun WorkoutHistoryItem(
     }
 
     // Errechne Ziel und erreichte Sätze abhängig vom Typ
-    val (totalSets, completedSets) = when (record.type) {
-        WorkoutType.PUSH_UP -> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getPushUpGoal(context)
-            val completedPushUps = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedPushUps / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.SQUAT -> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getSquatGoal(context)
-            val completedSquats = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedSquats / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.LUNGE -> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getLungeGoal(context)
-            val completedLunges = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedLunges / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.ROWING-> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getRowingGoal(context)
-            val completedRowing = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedRowing / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.CRUNCHES-> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getCrunchesGoal(context)
-            val completedCrunches = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedCrunches / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.SHOULDER_PRESS-> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getShoulderPressGoal(context)
-            val completedShoulderPress = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedShoulderPress / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.BURPEES-> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getBurpeesGoal(context)
-            val completedBurpees = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedBurpees / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.LEG_RAISES-> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getLegRaisesGoal(context)
-            val completedLegRaises = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedLegRaises / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.TRIZEPS_DIPS-> {
-            val (goalReps, goalSets) = WorkoutSettingsRepository.getTrizepsDipsGoal(context)
-            val completedDips = record.count ?: 0
-            // Errechnete Sätze (begrenzen auf das Ziel)
-            val setsDone = (completedDips / goalReps).coerceAtMost(goalSets)
-            Pair(goalSets, setsDone)
-        }
-        WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> {
-            val (_, _, targetSets) = WorkoutSettingsRepository.getTargetTime(context, record.type)
-            val setsDone = record.sets ?: 0
-            Pair(targetSets, setsDone)
-        }
+    val totalSets = record.goalSets ?: 0
+    val goalReps = record.goalReps ?: 0
+    val completedSets = when (record.type) {
+        WorkoutType.PLANK, WorkoutType.MOUNTAIN_CLIMBER -> record.sets ?: 0
+        else -> (record.count ?: 0) / goalReps
     }
 
     // Erstelle Checkmarks: Für jedes Ziel-Set ein Icon, das grün wird, wenn der Satz erledigt wurde, sonst grau
@@ -124,23 +60,22 @@ fun WorkoutHistoryItem(
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween  // Sorgt für gleichmäßige Verteilung
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // Erste Spalte: Datum und Details
             Column(
                 modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.Start // Links ausrichten
+                horizontalAlignment = Alignment.Start
             ) {
                 Text(text = record.date, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
                 Text(text = detailsText, color = MaterialTheme.colorScheme.surface)
-
             }
 
             // Zweite Spalte: Checkmarks (falls vorhanden)
             if (checkmarks.isNotEmpty()) {
                 Column(
                     modifier = Modifier.padding(start = 10.dp).weight(1f),
-                    horizontalAlignment = Alignment.Start // Zentrieren
+                    horizontalAlignment = Alignment.Start
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
                         checkmarks.forEach { isCompleted ->
@@ -159,7 +94,7 @@ fun WorkoutHistoryItem(
             // Dritte Spalte: Optionen (Edit / Delete)
             Column(
                 modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.End // Rechts ausrichten
+                horizontalAlignment = Alignment.End
             ) {
                 Row(horizontalArrangement = Arrangement.End) {
                     IconButton(onClick = onDelete) {

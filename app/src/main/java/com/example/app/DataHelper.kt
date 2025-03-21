@@ -17,7 +17,11 @@ enum class WorkoutType {
 data class WorkoutRecord(
     val date: String,
     val type: WorkoutType,
-    val count: Int? = null,          // Wiederholungen für Push-Ups
-    val sets: Int? = null,           // Anzahl der Sätze
-    val durationMillis: Int? = null  // Nur für Planks
+    val count: Int? = null,
+    val sets: Int? = null,
+    val durationMillis: Int? = null,
+
+    // Die Zielwerte werden jetzt fest mit dem Eintrag gespeichert
+    val goalReps: Int? = null,       // Ziel-Wiederholungen pro Satz
+    val goalSets: Int? = null,       // Ziel-Anzahl der Sätze
 )
