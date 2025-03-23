@@ -1,13 +1,18 @@
 package com.example.app
-
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.Bundle
@@ -37,6 +42,10 @@ import kotlin.math.abs
 import androidx.compose.foundation.Image
 import android.os.CountDownTimer
 import android.os.Environment
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -56,6 +65,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -602,6 +613,8 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
         }
     }
 }
+
+
 @Composable
 fun CounterScreen(workoutType: WorkoutType) {
     val context = LocalContext.current
@@ -612,7 +625,214 @@ fun CounterScreen(workoutType: WorkoutType) {
     var showCalibratedDialog by remember { mutableStateOf(false) }
     var reps by remember { mutableStateOf("30") }
     var sets by remember { mutableStateOf("3") }
-    // Abrufen der Push-Up-Ziele aus SharedPreferences
+
+    var userText by remember {  mutableStateOf("test")}
+
+    val germanNumberMap = mapOf(
+        "eins" to 1,
+        "zwei" to 2,
+        "drei" to 3,
+        "vier" to 4,
+        "fünf" to 5,
+        "sechs" to 6,
+        "sieben" to 7,
+        "acht" to 8,
+        "neun" to 9,
+        "zehn" to 10,
+        "elf" to 11,
+        "zwölf" to 12,
+        "dreizehn" to 13,
+        "vierzehn" to 14,
+        "fünfzehn" to 15,
+        "sechzehn" to 16,
+        "siebzehn" to 17,
+        "achtzehn" to 18,
+        "neunzehn" to 19,
+        "zwanzig" to 20,
+        "einundzwanzig" to 21,
+        "zweiundzwanzig" to 22,
+        "dreiundzwanzig" to 23,
+        "vierundzwanzig" to 24,
+        "fünfundzwanzig" to 25,
+        "sechsundzwanzig" to 26,
+        "siebenundzwanzig" to 27,
+        "achtundzwanzig" to 28,
+        "neunundzwanzig" to 29,
+        "dreißig" to 30,
+        "einunddreißig" to 31,
+        "zweiunddreißig" to 32,
+        "dreiunddreißig" to 33,
+        "vierunddreißig" to 34,
+        "fünfunddreißig" to 35,
+        "sechsunddreißig" to 36,
+        "siebenunddreißig" to 37,
+        "achtunddreißig" to 38,
+        "neununddreißig" to 39,
+        "vierzig" to 40,
+        "einundvierzig" to 41,
+        "zweiundvierzig" to 42,
+        "dreiundvierzig" to 43,
+        "vierundvierzig" to 44,
+        "fünfundvierzig" to 45,
+        "sechsundvierzig" to 46,
+        "siebenundvierzig" to 47,
+        "achtundvierzig" to 48,
+        "neunundvierzig" to 49,
+        "fünfzig" to 50,
+        "einundfünfzig" to 51,
+        "zweiundfünfzig" to 52,
+        "dreiundfünfzig" to 53,
+        "vierundfünfzig" to 54,
+        "fünfundfünfzig" to 55,
+        "sechsundfünfzig" to 56,
+        "siebenundfünfzig" to 57,
+        "achtundfünfzig" to 58,
+        "neunundfünfzig" to 59,
+        "sechzig" to 60,
+        "einundsechzig" to 61,
+        "zweiundsechzig" to 62,
+        "dreiundsechzig" to 63,
+        "vierundsechzig" to 64,
+        "fünfundsechzig" to 65,
+        "sechsundsechzig" to 66,
+        "siebenundsechzig" to 67,
+        "achtundsechzig" to 68,
+        "neunundsechzig" to 69,
+        "siebzig" to 70,
+        "einundsiebzig" to 71,
+        "zweiundsiebzig" to 72,
+        "dreiundsiebzig" to 73,
+        "vierundsiebzig" to 74,
+        "fünfundsiebzig" to 75,
+        "sechsundsiebzig" to 76,
+        "siebenundsiebzig" to 77,
+        "achtundsiebzig" to 78,
+        "neunundsiebzig" to 79,
+        "achtzig" to 80,
+        "einundachtzig" to 81,
+        "zweiundachtzig" to 82,
+        "dreiundachtzig" to 83,
+        "vierundachtzig" to 84,
+        "fünfundachtzig" to 85,
+        "sechsundachtzig" to 86,
+        "siebenundachtzig" to 87,
+        "achtundachtzig" to 88,
+        "neunundachtzig" to 89,
+        "neunzig" to 90,
+        "einundneunzig" to 91,
+        "zweiundneunzig" to 92,
+        "dreiundneunzig" to 93,
+        "vierundneunzig" to 94,
+        "fünfundneunzig" to 95,
+        "sechsundneunzig" to 96,
+        "siebenundneunzig" to 97,
+        "achtundneunzig" to 98,
+        "neunundneunzig" to 99,
+        "hundert" to 100
+    )
+
+    // SpeechRecognizer und Intent initialisieren
+    val speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+    val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "de-DE")
+    }
+    fun startSpeechRecognition() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                context as Activity,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                100
+            )
+        } else {
+            speechRecognizer.startListening(speechIntent)
+        }
+    }
+
+    // Funktion zum Aktualisieren eines Eintrags in der History
+    fun updateRecord(updatedRecord: WorkoutRecord, originalRecord: WorkoutRecord) {
+        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+        val index = currentHistory.indexOf(originalRecord)
+        if (index != -1) {
+            currentHistory[index] = updatedRecord.copy(
+                goalReps = updatedRecord.goalReps ?: originalRecord.goalReps,
+                goalSets = updatedRecord.goalSets ?: originalRecord.goalSets
+            )
+            WorkoutHistoryRepository.saveHistory(context, currentHistory)
+            history = currentHistory
+        }
+    }
+
+    // Funktion zum Löschen eines Eintrags
+    fun deleteRecord(record: WorkoutRecord) {
+        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+        currentHistory.remove(record)
+        WorkoutHistoryRepository.saveHistory(context, currentHistory)
+        history = currentHistory
+    }
+
+    // Funktion zum Speichern des Workout-Eintrags
+    fun addWorkoutRecord() {
+        val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
+        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
+
+        val existingRecord = currentHistory.find { it.date == date && it.type == workoutType }
+        if (existingRecord != null) {
+            val updatedRecord = existingRecord.copy(
+                count = (existingRecord.count ?: 0) + 1,
+                goalReps = reps.toIntOrNull() ?: existingRecord.goalReps,
+                goalSets = sets.toIntOrNull() ?: existingRecord.goalSets
+            )
+            currentHistory[currentHistory.indexOf(existingRecord)] = updatedRecord
+        } else {
+            val newRecord = WorkoutRecord(
+                date = date,
+                type = workoutType,
+                count = 1,
+                goalReps = reps.toIntOrNull() ?: 0,
+                goalSets = sets.toIntOrNull() ?: 0
+            )
+            currentHistory.add(newRecord)
+        }
+
+        WorkoutHistoryRepository.saveHistory(context, currentHistory)
+        history = currentHistory
+    }
+
+    speechRecognizer.setRecognitionListener(object : RecognitionListener {
+        override fun onResults(results: Bundle?) {
+            val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            matches?.firstOrNull()?.let { spokenText ->
+                val lowerText = spokenText.lowercase(Locale.getDefault())
+                when {
+                    lowerText == "plus" -> {
+                        count++
+                        userText = lowerText
+                        addWorkoutRecord()
+                    }
+                    germanNumberMap.containsKey(lowerText) -> {
+                        userText = lowerText
+                        count = germanNumberMap[lowerText] ?: count
+                        // Optional: Hier kannst du auch addWorkoutRecord() aufrufen, falls erwünscht
+                    }
+                    else -> {
+                        userText = lowerText
+                        // Optional: fallback, wenn der erkannte Text keine passende Zahl oder "plus" ist
+                    }
+                }
+            }
+        }
+        override fun onError(error: Int) {}
+        override fun onReadyForSpeech(params: Bundle?) {}
+        override fun onBeginningOfSpeech() {}
+        override fun onRmsChanged(rmsdB: Float) {}
+        override fun onBufferReceived(buffer: ByteArray?) {}
+        override fun onEndOfSpeech() {}
+        override fun onPartialResults(partialResults: Bundle?) {}
+        override fun onEvent(eventType: Int, params: Bundle?) {}
+    })
+
+    // Beim Start werden die Ziele aus SharedPreferences geladen
     LaunchedEffect(context) {
         when (workoutType) {
             WorkoutType.PUSH_UP -> {
@@ -661,245 +881,221 @@ fun CounterScreen(workoutType: WorkoutType) {
                 sets = savedSets.toString()
             }
             WorkoutType.PLANK -> {
-                // Hier kannst du die Darstellung für Planks anpassen
-                val (minutes, seconds) = WorkoutSettingsRepository.getTargetTime(context,
-                    WorkoutType.PLANK
-                )
+                val (minutes, seconds) = WorkoutSettingsRepository.getTargetTime(context, WorkoutType.PLANK)
                 reps = minutes.toString()
                 sets = seconds.toString()
             }
             WorkoutType.MOUNTAIN_CLIMBER -> {
-                // Hier kannst du die Darstellung für Planks anpassen
-                val (minutes, seconds) = WorkoutSettingsRepository.getTargetTime(context,
-                    WorkoutType.MOUNTAIN_CLIMBER
-                )
+                val (minutes, seconds) = WorkoutSettingsRepository.getTargetTime(context, WorkoutType.MOUNTAIN_CLIMBER)
                 reps = minutes.toString()
                 sets = seconds.toString()
             }
         }
     }
+
     // Dialog-Status
     var showDialog by remember { mutableStateOf(false) }
-    // Aktualisieren eines Eintrags in der History
-    fun updateRecord(updatedRecord: WorkoutRecord, originalRecord: WorkoutRecord) {
-        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
-        val index = currentHistory.indexOf(originalRecord)
-        if (index != -1) {
-            currentHistory[index] = updatedRecord.copy(
-                goalReps = updatedRecord.goalReps ?: originalRecord.goalReps,
-                goalSets = updatedRecord.goalSets ?: originalRecord.goalSets
+
+
+
+    // Sensor-Listener (z. B. für Push-Ups)
+    val sensorListener = remember { PushUpSensorListener(context) { count++; addWorkoutRecord() } }
+    LaunchedEffect(Unit) {
+        sensorListener.register()
+    }
+    DisposableEffect(Unit) {
+        onDispose { sensorListener.unregister() }
+    }
+
+    val filteredHistory = history.filter { it.type == workoutType }.reversed()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextField(
+                value = reps,
+                onValueChange = { reps = it },
+                label = { Text("Wiederholungen") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f)
             )
-            WorkoutHistoryRepository.saveHistory(context, currentHistory)
-            history = currentHistory
+            TextField(
+                value = sets,
+                onValueChange = { sets = it },
+                label = { Text("Sätze") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = {
+                val repsInt = reps.toIntOrNull() ?: 30
+                val setsInt = sets.toIntOrNull() ?: 3
+                when (workoutType) {
+                    WorkoutType.PUSH_UP -> WorkoutSettingsRepository.savePushUpGoal(context, repsInt, setsInt)
+                    WorkoutType.SQUAT -> WorkoutSettingsRepository.saveSquatGoal(context, repsInt, setsInt)
+                    WorkoutType.LUNGE -> WorkoutSettingsRepository.saveLungeGoal(context, repsInt, setsInt)
+                    WorkoutType.ROWING -> WorkoutSettingsRepository.saveRowingGoal(context, repsInt, setsInt)
+                    WorkoutType.CRUNCHES -> WorkoutSettingsRepository.saveCrunchesGoal(context, repsInt, setsInt)
+                    WorkoutType.SHOULDER_PRESS -> WorkoutSettingsRepository.saveShoulderPressGoal(context, repsInt, setsInt)
+                    WorkoutType.BURPEES -> WorkoutSettingsRepository.saveBurpeesGoal(context, repsInt, setsInt)
+                    WorkoutType.LEG_RAISES -> WorkoutSettingsRepository.saveLegRaisesGoal(context, repsInt, setsInt)
+                    WorkoutType.TRIZEPS_DIPS -> WorkoutSettingsRepository.saveTrizepsDipsGoal(context, repsInt, setsInt)
+                    WorkoutType.PLANK -> WorkoutSettingsRepository.saveTargetTime(context, WorkoutType.PLANK, repsInt, setsInt, setsInt)
+                    WorkoutType.MOUNTAIN_CLIMBER -> WorkoutSettingsRepository.saveTargetTime(context, WorkoutType.MOUNTAIN_CLIMBER, repsInt, setsInt, setsInt)
+                }
+                showDialog = true
+            },
+            modifier = Modifier
+                .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+                .fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = when (workoutType) {
+                WorkoutType.PUSH_UP -> "Push‑Up Verlauf"
+                WorkoutType.SQUAT -> "Kniebeugen Verlauf"
+                WorkoutType.LUNGE -> "Ausfallschritte Verlauf"
+                WorkoutType.ROWING -> "Rudern Verlauf"
+                WorkoutType.CRUNCHES -> "Crunches Verlauf"
+                WorkoutType.SHOULDER_PRESS -> "Schulterpresse Verlauf"
+                WorkoutType.BURPEES -> "Burpee Verlauf"
+                WorkoutType.LEG_RAISES -> "Beinheben Verlauf"
+                WorkoutType.TRIZEPS_DIPS -> "Trizeps-Dips Verlauf"
+                WorkoutType.PLANK -> "Plank Verlauf"
+                WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber Verlauf"
+            },
+            color = MaterialTheme.colorScheme.surface,
+            style = MaterialTheme.typography.headlineSmall
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            items(filteredHistory) { record ->
+                WorkoutHistoryItem(
+                    record = record,
+                    onEdit = { editRecord = record },
+                    onDelete = { deleteRecord = record }
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "$count",
+            color = MaterialTheme.colorScheme.onPrimary,
+            style = MaterialTheme.typography.headlineMedium
+        )
+        Text(
+            text = "$userText",
+            color = MaterialTheme.colorScheme.onPrimary,
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = {
+                    count++
+                    addWorkoutRecord()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+            ) {
+                Text(
+                    text = when (workoutType) {
+                        WorkoutType.PUSH_UP -> "Push‑Up hinzufügen"
+                        WorkoutType.SQUAT -> "Kniebeuge hinzufügen"
+                        WorkoutType.LUNGE -> "Ausfallschritt hinzufügen"
+                        WorkoutType.ROWING -> "Rudern hinzufügen"
+                        WorkoutType.CRUNCHES -> "Bauchpresse hinzufügen"
+                        WorkoutType.SHOULDER_PRESS -> "Schulterpresse hinzufügen"
+                        WorkoutType.BURPEES -> "Burpee hinzufügen"
+                        WorkoutType.LEG_RAISES -> "Beinheben hinzufügen"
+                        WorkoutType.TRIZEPS_DIPS -> "Dips hinzufügen"
+                        WorkoutType.PLANK -> "Plank hinzufügen"
+                        WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber hinzufügen"
+                    },
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            /*OutlinedButton(
+                onClick = {
+                    sensorListener.calibrate()
+                    showCalibratedDialog = true
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp)
+            ) {
+                Text(text = "Kalibrieren", color = MaterialTheme.colorScheme.onSecondary)
+            }*/
+            OutlinedButton(
+                onClick = {
+                    startSpeechRecognition()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp)
+            ) {
+                Text(text = "Spracherkennung", color = MaterialTheme.colorScheme.onSecondary)
+            }
+            /*Button(onClick = { startSpeechRecognition() }) {
+                Text("Spracherkennung")
+            }*/
+            Button(
+                onClick = {
+                    count = 0
+                    vibratePhone(context, 100)
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
+                Text(text = "Zurücksetzen", color = MaterialTheme.colorScheme.onSecondary)
+            }
         }
     }
-    // Löschen eines Eintrags aus der History
-    fun deleteRecord(record: WorkoutRecord) {
-        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
-        currentHistory.remove(record)
-        WorkoutHistoryRepository.saveHistory(context, currentHistory)
-        history = currentHistory
+    if (showDialog) {
+        vibratePhone(context, 100)
+        WorkoutAlert(
+            title = "Speichern erfolgreich",
+            message = "Das tägliche Ziel wurde erfolgreich gespeichert",
+            onDismiss = { showDialog = false }
+        )
     }
-    // Speichern des Ziels (Vereinheitlicht über WorkoutSettingsRepository)
-    fun addWorkoutRecord() {
-        val date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-        val currentHistory = WorkoutHistoryRepository.loadHistory(context).toMutableList()
-
-        val existingRecord = currentHistory.find { it.date == date && it.type == workoutType }
-        if (existingRecord != null) {
-            val updatedRecord = existingRecord.copy(
-                count = (existingRecord.count ?: 0) + 1,
-                goalReps = reps.toIntOrNull() ?: existingRecord.goalReps,
-                goalSets = sets.toIntOrNull() ?: existingRecord.goalSets
-            )
-            currentHistory[currentHistory.indexOf(existingRecord)] = updatedRecord
-        } else {
-            val newRecord = WorkoutRecord(
-                date = date,
-                type = workoutType,
-                count = 1,
-                goalReps = reps.toIntOrNull() ?: 0,
-                goalSets = sets.toIntOrNull() ?: 0
-            )
-            currentHistory.add(newRecord)
-        }
-
-        WorkoutHistoryRepository.saveHistory(context, currentHistory)
-        history = currentHistory
+    if (showCalibratedDialog) {
+        vibratePhone(context, 100)
+        WorkoutAlert(
+            title = "Erfolgreich kalibriert!",
+            message = "Kalibrierung wurde erfolgreich zurückgesetzt.",
+            onDismiss = { showCalibratedDialog = false }
+        )
     }
-   val sensorListener = remember { PushUpSensorListener(context) { count++; addWorkoutRecord() } }
-   LaunchedEffect(Unit) {
-       sensorListener.register()
-   }
-   DisposableEffect(Unit) {
-       onDispose { sensorListener.unregister() }
-   }
-   val filteredHistory = history.filter { it.type == workoutType }.reversed()
-   Column(
-       modifier = Modifier
-           .fillMaxSize()
-           .background(MaterialTheme.colorScheme.background)
-           .padding(horizontal = 16.dp, vertical = 64.dp),
-       horizontalAlignment = Alignment.CenterHorizontally
-   ) {
-       Row(
-           horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
-           verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
-       ) {
-           TextField(
-               value = reps,
-               onValueChange = { reps = it },
-               label = { Text("Wiederholungen") },
-               keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-               modifier = Modifier.weight(1f) // TextField nimmt gleichmäßig Platz ein
-           )
-           TextField(
-               value = sets,
-               onValueChange = { sets = it },
-               label = { Text("Sätze") },
-               keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-               modifier = Modifier.weight(1f) // TextField nimmt gleichmäßig Platz ein
-           )
-       }
-       Spacer(modifier = Modifier.height(24.dp))
-       // Ziel speichern Button
-       Button(
-           onClick = {
-               val repsInt = reps.toIntOrNull() ?: 30
-               val setsInt = sets.toIntOrNull() ?: 3
-               when (workoutType) {
-                   WorkoutType.PUSH_UP -> WorkoutSettingsRepository.savePushUpGoal(context, repsInt, setsInt)
-                   WorkoutType.SQUAT -> WorkoutSettingsRepository.saveSquatGoal(context, repsInt, setsInt)
-                   WorkoutType.LUNGE -> WorkoutSettingsRepository.saveLungeGoal(context, repsInt, setsInt)
-                   WorkoutType.ROWING -> WorkoutSettingsRepository.saveRowingGoal(context, repsInt, setsInt)
-                   WorkoutType.CRUNCHES -> WorkoutSettingsRepository.saveCrunchesGoal(context, repsInt, setsInt)
-                   WorkoutType.SHOULDER_PRESS -> WorkoutSettingsRepository.saveShoulderPressGoal(context, repsInt, setsInt)
-                   WorkoutType.BURPEES -> WorkoutSettingsRepository.saveBurpeesGoal(context, repsInt, setsInt)
-                   WorkoutType.LEG_RAISES -> WorkoutSettingsRepository.saveLegRaisesGoal(context, repsInt, setsInt)
-                   WorkoutType.TRIZEPS_DIPS -> WorkoutSettingsRepository.saveTrizepsDipsGoal(context, repsInt, setsInt)
-                   WorkoutType.PLANK -> WorkoutSettingsRepository.saveTargetTime(context, WorkoutType.PLANK,repsInt, setsInt, setsInt)
-                   WorkoutType.MOUNTAIN_CLIMBER -> WorkoutSettingsRepository.saveTargetTime(context, WorkoutType.PLANK,repsInt, setsInt, setsInt) // Anpassen, falls nötig
-               }
-               showDialog = true
-           },
-           modifier = Modifier.shadow(10.dp, shape = RoundedCornerShape(8.dp)).fillMaxWidth(),
-           colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-       ) {
-           Text(text = "Ziel speichern", color = MaterialTheme.colorScheme.onPrimary)
-       }
-       Spacer(modifier = Modifier.height(16.dp))
-       Text(
-           text = when (workoutType) {
-               WorkoutType.PUSH_UP -> "Push‑Up Verlauf"
-               WorkoutType.SQUAT -> "Kniebeugen Verlauf"
-               WorkoutType.LUNGE -> "Ausfallschritte Verlauf"
-               WorkoutType.ROWING -> "Rudern Verlauf"
-               WorkoutType.CRUNCHES -> "Crunches Verlauf"
-               WorkoutType.SHOULDER_PRESS -> "Schulterpresse Verlauf"
-               WorkoutType.BURPEES -> "Burpee Verlauf"
-               WorkoutType.LEG_RAISES -> "Beinheben Verlauf"
-               WorkoutType.TRIZEPS_DIPS -> "Trizeps-Dips Verlauf"
-               WorkoutType.PLANK -> "Plank Verlauf"
-               WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber Verlauf"
-           },
-           color = MaterialTheme.colorScheme.surface,
-           style = MaterialTheme.typography.headlineSmall
-       )
-       Spacer(modifier = Modifier.height(8.dp))
-       LazyColumn(
-           modifier = Modifier
-               .weight(1f)
-               .fillMaxWidth(),
-           contentPadding = PaddingValues(vertical = 8.dp)
-       ) {
-           items(filteredHistory) { record ->
-               WorkoutHistoryItem(
-                   record = record,
-                   onEdit = { editRecord = record },
-                   onDelete = { deleteRecord = record }
-               )
-           }
-       }
-       Spacer(modifier = Modifier.height(8.dp))
-       Text(
-           text = "$count",
-           color = MaterialTheme.colorScheme.onPrimary,
-           style = MaterialTheme.typography.headlineMedium
-       )
-
-       Row(
-           horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Textfeldern
-           verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
-       ) {
-           Button(
-               onClick = {
-                   count++
-                   addWorkoutRecord()
-               },
-               modifier = Modifier
-                   .fillMaxWidth(), // Volle Breite für den oberen Button
-               colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-           ) {
-               Text(
-                   text = when (workoutType) {
-                       WorkoutType.PUSH_UP -> "Push‑Up hinzufügen"
-                       WorkoutType.SQUAT -> "Kniebeuge hinzufügen"
-                       WorkoutType.LUNGE -> "Ausfallschritt hinzufügen"
-                       WorkoutType.ROWING -> "Rudern hinzufügen"
-                       WorkoutType.CRUNCHES -> "Bauchpresse hinzufügen"
-                       WorkoutType.SHOULDER_PRESS -> "Schulterpresse hinzufügen"
-                       WorkoutType.BURPEES -> "Burpee hinzufügen"
-                       WorkoutType.LEG_RAISES -> "Beinheben hinzufügen"
-                       WorkoutType.TRIZEPS_DIPS -> "Dips hinzufügen"
-                       WorkoutType.PLANK -> "Plank hinzufügen"
-                       WorkoutType.MOUNTAIN_CLIMBER -> "Mountain-Climber hinzufügen"
-                   },
-                   color = MaterialTheme.colorScheme.onPrimary
-               )
-           }
-       }
-       Spacer(modifier = Modifier.height(8.dp))
-       Row(
-           horizontalArrangement = Arrangement.spacedBy(16.dp), // Abstand zwischen den Buttons
-           verticalAlignment = Alignment.CenterVertically // Vertikale Ausrichtung
-       ) {
-           OutlinedButton(
-               onClick = {
-                   sensorListener.calibrate()
-                   showCalibratedDialog = true
-               },
-               modifier = Modifier
-                   .weight(1f) // 50% der Breite, weil beide Buttons das gleiche Gewicht haben
-                   .height(50.dp),
-           ) {
-               Text(text = "Kalibrieren", color = MaterialTheme.colorScheme.onSecondary)
-           }
-
-           Button(
-               onClick = {
-                   count = 0
-                   vibratePhone(context, 100)
-               },
-               modifier = Modifier
-                   .weight(1f) // 50% der Breite
-                   .height(50.dp),
-               colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-           ) {
-               Text(text = "Zurücksetzen", color = MaterialTheme.colorScheme.onSecondary)
-           }
-       }
-   }
-   // Einfache AlertDialog-Box anzeigen
-   if (showDialog) {
-       vibratePhone(context,100)
-       WorkoutAlert(title = "Speichern erfolgreich", message = "Das tägliche Ziel wurde erfolgreich gespeichert", onDismiss = { showDialog = false })
-   }
-   // Dialog für das Erreichen des Ziels
-   if (showCalibratedDialog) {
-       vibratePhone(context,100)
-       WorkoutAlert(title = "Erfolgreich kalibriert!", message = "Kalibrierung wurde erfolgreich zurückgesetzt.", onDismiss = { showCalibratedDialog = false })
-   }
-   editRecord?.let { record ->
+    editRecord?.let { record ->
         EditCounterWorkoutDialog(
             record = record,
             onDismiss = { editRecord = null },
@@ -909,8 +1105,8 @@ fun CounterScreen(workoutType: WorkoutType) {
                 editRecord = null
             }
         )
-   }
-   deleteRecord?.let { record ->
+    }
+    deleteRecord?.let { record ->
         DeleteCounterWorkoutDialog(
             record = record,
             onDismiss = { deleteRecord = null },
@@ -919,7 +1115,7 @@ fun CounterScreen(workoutType: WorkoutType) {
                 deleteRecord = null
             }
         )
-   }
+    }
 }
 
 @Composable
