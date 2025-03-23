@@ -53,6 +53,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.app.ActivityCompat
@@ -92,6 +93,7 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
     }
     fun startTimer() {
         if (isRunning) return
+        vibratePhone(context, 100)
         val totalMillis = (minutes * 60 + seconds) * 1000L
         remainingTime = totalMillis.toInt()
         isRunning = true
@@ -112,6 +114,7 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
     fun stopTimer() {
         timer?.cancel()
         isRunning = false
+        vibratePhone(context, 100)
     }
     @SuppressLint("DefaultLocale")
     private fun formatTime(timeInMillis: Int): String {
@@ -131,6 +134,7 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
         )
         WorkoutHistoryRepository.addOrUpdateRecord(context, record)
         history = WorkoutHistoryRepository.loadHistory(context)
+        vibratePhone(context, 100)
     }
     fun saveTargetTime() {
         WorkoutSettingsRepository.saveTargetTime(context, workoutType, minutes, seconds, goalSets)
@@ -415,6 +419,16 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
     var editRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
     var deleteRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
 
+    val view = LocalView.current
+
+    LaunchedEffect(Unit) {
+        view.keepScreenOn = true
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { view.keepScreenOn = false }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -544,11 +558,11 @@ fun WorkoutTimerScreen(viewModel: WorkoutTimerViewModel) {
 @Composable
 fun CounterScreen(workoutType: WorkoutType) {
     val context = LocalContext.current
+    val view = LocalView.current
     var count by remember { mutableIntStateOf(0) }
     var history by remember { mutableStateOf(WorkoutHistoryRepository.loadHistory(context)) }
     var editRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
     var deleteRecord by remember { mutableStateOf<WorkoutRecord?>(null) }
-    var showCalibratedDialog by remember { mutableStateOf(false) }
     var reps by remember { mutableStateOf("30") }
     var sets by remember { mutableStateOf("3") }
 
@@ -833,11 +847,13 @@ fun CounterScreen(workoutType: WorkoutType) {
     var showDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        view.keepScreenOn = true
         startSpeechRecognition()
     }
     DisposableEffect(Unit) {
         onDispose { speechRecognizer.stopListening()
                     speechRecognizer.destroy()
+                    view.keepScreenOn = false
         }
     }
 
@@ -992,14 +1008,7 @@ fun CounterScreen(workoutType: WorkoutType) {
             onDismiss = { showDialog = false }
         )
     }
-    if (showCalibratedDialog) {
-        vibratePhone(context, 100)
-        WorkoutAlert(
-            title = "Erfolgreich kalibriert!",
-            message = "Kalibrierung wurde erfolgreich zurückgesetzt.",
-            onDismiss = { showCalibratedDialog = false }
-        )
-    }
+
     editRecord?.let { record ->
         EditCounterWorkoutDialog(
             record = record,
