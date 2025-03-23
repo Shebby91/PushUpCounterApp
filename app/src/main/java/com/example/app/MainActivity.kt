@@ -134,7 +134,7 @@ class WorkoutTimerViewModel(private val context: Context, val workoutType: Worko
         )
         WorkoutHistoryRepository.addOrUpdateRecord(context, record)
         history = WorkoutHistoryRepository.loadHistory(context)
-        vibratePhone(context, 100)
+        vibratePhone(context, 200)
     }
     fun saveTargetTime() {
         WorkoutSettingsRepository.saveTargetTime(context, workoutType, minutes, seconds, goalSets)
@@ -171,7 +171,7 @@ fun DarkTheme(content: @Composable () -> Unit) {
             background = Color(0xFF212529),
             surface = Color(0xFFF8F9FA),
             onPrimary = Color.White,
-            onSecondary = Color.White,
+            onSecondary = Color(0xFFFFE69C),
             onTertiary = Color.Black,
             onBackground = Color(0xFFB0A8B9),
             onSurface = Color(0xFFB0A8B9),
@@ -239,7 +239,7 @@ fun StartScreen(navController: NavController) {
             modifier = Modifier.size(90.dp)
         )
         Text(
-            text = "Welcome back, Sebastian!",
+            text = "Willkommen zurück, Sebastian!",
             color = MaterialTheme.colorScheme.surface,
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
@@ -318,7 +318,7 @@ fun ExerciseTile(navController: NavController, label: String, route: String) {
 
     Column(
         modifier = Modifier
-            .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+            .shadow(10.dp, shape = RoundedCornerShape(8.dp), ambientColor =  MaterialTheme.colorScheme.primary, spotColor = MaterialTheme.colorScheme.primary )
             .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
             .clickable { navController.navigate(route) }
@@ -352,7 +352,7 @@ fun ActionTile(label: String, type: String, onClick: () -> Unit) {
 
     Column(
         modifier = Modifier
-            .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+            .shadow(10.dp, shape = RoundedCornerShape(8.dp), ambientColor =  MaterialTheme.colorScheme.surface, spotColor = MaterialTheme.colorScheme.surface)
             .border(2.dp, borderColor, RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
             .clickable { onClick() }
@@ -388,8 +388,8 @@ fun GoalTile(navController: NavController, label: String, route: String) {
 
     Column(
         modifier = Modifier
-            .shadow(10.dp, shape = RoundedCornerShape(8.dp))
-            .border(2.dp, MaterialTheme.colorScheme.onBackground, RoundedCornerShape(8.dp))
+            .shadow(10.dp, shape = RoundedCornerShape(8.dp), ambientColor =  MaterialTheme.colorScheme.onSecondary, spotColor = MaterialTheme.colorScheme.onSecondary )
+            .border(2.dp, MaterialTheme.colorScheme.onSecondary, RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
             .clickable { navController.navigate(route) }
             .padding(12.dp)
@@ -957,6 +957,7 @@ fun CounterScreen(workoutType: WorkoutType) {
         ) {
             Button(
                 onClick = {
+                    vibratePhone(context, 100)
                     count++
                     addWorkoutRecord()
                 },
@@ -996,7 +997,7 @@ fun CounterScreen(workoutType: WorkoutType) {
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
             ) {
-                Text(text = "Zurücksetzen", color = MaterialTheme.colorScheme.onSecondary)
+                Text(text = "Zurücksetzen", color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
@@ -1073,6 +1074,7 @@ fun DailyOverviewScreen() {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .shadow(4.dp, shape = RoundedCornerShape(14.dp))
                                 .padding(vertical = 8.dp),
                             shape = RoundedCornerShape(12.dp),
                             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -1208,7 +1210,7 @@ fun TotalWorkoutOverviewScreen(context: Context) {
                     item {
                         Card(
                             modifier = Modifier
-                                .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+                                .shadow(4.dp, shape = RoundedCornerShape(14.dp))
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp),
                             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -1365,7 +1367,7 @@ fun AchievementsScreen(context: Context) {
                     item {
                         Card(
                             modifier = Modifier
-                                .shadow(10.dp, shape = RoundedCornerShape(8.dp))
+                                .shadow(4.dp, shape = RoundedCornerShape(14.dp))
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp),
                             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
